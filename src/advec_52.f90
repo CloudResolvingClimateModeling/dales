@@ -45,6 +45,7 @@ subroutine advecc_52(putin, putout)
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1) :: rhoputin
 
   integer :: i,j,k
+  ! not-used dir $  assume_aligned putin:64, putout:64
 
   !if (leq) then
 

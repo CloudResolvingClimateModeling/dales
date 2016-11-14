@@ -53,6 +53,10 @@ save
   real, allocatable :: e12p(:,:,:)      !<   tendency of e12m
   real, allocatable :: qtp(:,:,:)       !<   tendency of qtm
 
+! not used dir $ attributes align:64 :: um, vm, wm, thlm, e12m, qtm
+! not used dir $ attributes align:64 :: u0, v0, w0, thl0, e120, qt0
+! not used dir $ attributes align:64 :: up, vp, wp, thlp, e12p, qtp
+
   real, allocatable :: svm(:,:,:,:)   !<  scalar sv(n) at time step t-1
   real, allocatable :: sv0(:,:,:,:)   !<  scalar sv(n) at time step t
   real, allocatable :: svp(:,:,:,:)   !<  tendency of sv(n)
