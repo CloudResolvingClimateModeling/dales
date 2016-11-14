@@ -43,9 +43,12 @@ subroutine advecc_52(putin, putout)
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(in)  :: putin !< Input: the cell centered field
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(inout) :: putout !< Output: the tendency
 !  real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1) :: rhoputin
+!  real                                      :: rhobfinvk                      
+  real                                       :: inv2dzfk, rhobf_p, rhobf_m
 
   integer :: i,j,k
-  ! not-used dir $  assume_aligned putin:64, putout:64
+  ! dir $  assume_aligned putin:64, putout:64
+  ! assume (i1+ih - (2-ih)) % 8 = 0
 
   !if (leq) then
 
@@ -58,6 +61,10 @@ subroutine advecc_52(putin, putout)
 !  end do
 
   do k=1,kmax
+     !rhobfinvk = 1./rhobf(k)
+     inv2dzfk = 1./(2. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)
     do j=2,j1
       do i=2,i1
 
@@ -84,9 +91,9 @@ subroutine advecc_52(putin, putout)
                   +abs(v0(i,j,k))/60.&
                   *(10.*(putin(i,j,k)-putin(i,j-1,k))-5.*(putin(i,j+1,k)-putin(i,j-2,k))+(putin(i,j+2,k)-putin(i,j-3,k))) &
                   )* dyi &
-                +(1./rhobf(k))*( &
-                w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) + rhobf(k) * putin(i,j,k)) &
-                ) / ( 2. * dzf(k) ) &
+                + ( &
+                w0(i,j,k+1) * (rhobf_p * putin(i,j,k+1) + putin(i,j,k)) &
+                ) * inv2dzfk  &
                 )
 
         else
@@ -111,10 +118,10 @@ subroutine advecc_52(putin, putout)
                       +abs(v0(i,j,k))/60.&
                       *(10.*(putin(i,j,k)-putin(i,j-1,k))-5.*(putin(i,j+1,k)-putin(i,j-2,k))+(putin(i,j+2,k)-putin(i,j-3,k)))&
                   )* dyi &
-                +(1./rhobf(k))*( &
-                  w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) + rhobf(k) * putin(i,j,k)) &
-                  -w0(i,j,k)  * (rhobf(k-1) * putin(i,j,k-1) + rhobf(k) * putin(i,j,k)) &
-                  ) / ( 2. * dzf(k) ) &
+                + ( &
+                  w0(i,j,k+1) * (rhobf_p * putin(i,j,k+1) +  putin(i,j,k)) &
+                  -w0(i,j,k)  * (rhobf_m * putin(i,j,k-1) +  putin(i,j,k)) &
+                  ) * inv2dzfk &
                   )
         end if
 
