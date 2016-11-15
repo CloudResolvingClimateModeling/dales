@@ -48,9 +48,9 @@ subroutine advecc_52(p, q)
 
   integer :: i,j,k
   !dir$ assume_aligned p:64, q:64
-  !! dir $ assume(mod( i1+ih - (2-ih) + 1, 8) == 0)
-  !! dir $ assume(mod( j1+jh - (2-jh) + 1, 8) == 0)
-  !dir$ assume(mod(size(p,1), 8) == 0)
+  !dir$ assume(mod( i1+ih - (2-ih) + 1, 8) == 0)  ! these seem to help
+  !dir$ assume(mod( j1+jh - (2-jh) + 1, 8) == 0)
+  !dir$ assume(mod(size(p,1), 8) == 0)            ! these don't have much effect
   !dir$ assume(mod(size(p,2), 8) == 0)
   !dir$ assume(mod(size(q,1), 8) == 0)
   !dir$ assume(mod(size(q,2), 8) == 0)
