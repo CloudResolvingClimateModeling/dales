@@ -44,17 +44,18 @@ subroutine advecc_52(p, q)
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(inout) :: q !< Output: the tendency
 !  real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1) :: rhoputin
 !  real                                      :: rhobfinvk                      
-  real                                       :: inv2dzfk, rhobf_p, rhobf_m
+  real                                       :: inv2dzfk, rhobf_p, rhobf_m, iflow, jflow, kflow
 
   integer :: i,j,k
-  !! dir $ assume_aligned p:64, q:64
+  !dir$ assume_aligned p:64, q:64
   !! dir $ assume(mod( i1+ih - (2-ih) + 1, 8) == 0)
   !! dir $ assume(mod( j1+jh - (2-jh) + 1, 8) == 0)
-  !! dir $ assume(mod(size(p,1), 8) == 0)
-  !! dir $ assume(mod(size(p,2), 8) == 0)
-  !! dir $ assume(mod(size(q,1), 8) == 0)
-  !! dir $ assume(mod(size(q,2), 8) == 0)
+  !dir$ assume(mod(size(p,1), 8) == 0)
+  !dir$ assume(mod(size(p,2), 8) == 0)
+  !dir$ assume(mod(size(q,1), 8) == 0)
+  !dir$ assume(mod(size(q,2), 8) == 0)
 
+!print *, "size(p,1), size(p,2) ", size(p,1), size(p,2) ,  i1+ih - (2-ih) + 1, j1+jh - (2-jh) + 1
 
   !if (leq) then
 
@@ -94,112 +95,155 @@ subroutine advecc_52(p, q)
 
 
 ! u, v, w advection, one plane at a time
-k = 1
-q(2:i1 ,2:j1,k) = q(2:i1 ,2:j1,k) - (&
-(    u0(3:i1+1,2:j1,k)  * (37.*(p(3:i1+1,2:j1,k)+p(2:i1,2:j1,k))  -8.*(p(4:i1+2,2:j1,k)+p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)+p( 0:i1-2,2:j1,k)))  &
--abs(u0(3:i1+1,2:j1,k)) * (10.*(p(3:i1+1,2:j1,k)-p(2:i1,2:j1,k))  -5.*(p(4:i1+2,2:j1,k)-p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)-p( 0:i1-2,2:j1,k)))  &
-    -u0(2:i1  ,2:j1,k)  * (37.*(p(2:i1,2:j1,k)  +p(1:i1-1,2:j1,k))-8.*(p(3:i1+1,2:j1,k)+p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)+p(-1:i1-3,2:j1,k))) &
-+abs(u0(2:i1,  2:j1,k)) * (10.*(p(2:i1,2:j1,k)  -p(1:i1-1,2:j1,k))-5.*(p(3:i1+1,2:j1,k)-p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)-p(-1:i1-3,2:j1,k))) &
-)*dxi/60. + &
-(    v0(2:i1,3:j1+1,k)  * (37.*(p(2:i1,3:j1+1,k)+p(2:i1,2:j1  ,k)) -8.*(p(2:i1,4:j1+2,k)+p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)+p(2:i1, 0:j1-2,k)))  &
--abs(v0(2:i1,3:j1+1,k)) * (10.*(p(2:i1,3:j1+1,k)-p(2:i1,2:j1  ,k)) -5.*(p(2:i1,4:j1+2,k)-p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)-p(2:i1, 0:j1-2,k)))  &
-    -v0(2:i1,2:j1  ,k)  * (37.*(p(2:i1,2:j1,  k)+p(2:i1,1:j1-1,k)) -8.*(p(2:i1,3:j1+1,k)+p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)+p(2:i1,-1:j1-3,k))) &
-+abs(v0(2:i1,2:j1  ,k)) * (10.*(p(2:i1,2:j1,  k)-p(2:i1,1:j1-1,k)) -5.*(p(2:i1,3:j1+1,k)-p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)-p(2:i1,-1:j1-3,k))) &
-)*dyi/60. + &
-(  w0(2:i1,2:j1,k+1) * ( rhobf(k+1)/rhobf(k) * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k)) ) / (2. * dzf(k)) &
-)
-
-do k = 2, kmax
- q(2:i1 ,2:j1,k) = q(2:i1 ,2:j1,k) - (&
- (    u0(3:i1+1,2:j1,k)  * (37.*(p(3:i1+1,2:j1,k)+p(2:i1,2:j1,k))  -8.*(p(4:i1+2,2:j1,k)+p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)+p( 0:i1-2,2:j1,k)))  &
- -abs(u0(3:i1+1,2:j1,k)) * (10.*(p(3:i1+1,2:j1,k)-p(2:i1,2:j1,k))  -5.*(p(4:i1+2,2:j1,k)-p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)-p( 0:i1-2,2:j1,k)))  &
-     -u0(2:i1  ,2:j1,k)  * (37.*(p(2:i1,2:j1,k)  +p(1:i1-1,2:j1,k))-8.*(p(3:i1+1,2:j1,k)+p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)+p(-1:i1-3,2:j1,k))) &
- +abs(u0(2:i1,  2:j1,k)) * (10.*(p(2:i1,2:j1,k)  -p(1:i1-1,2:j1,k))-5.*(p(3:i1+1,2:j1,k)-p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)-p(-1:i1-3,2:j1,k))) &
- )*dxi/60. + &
- (    v0(2:i1,3:j1+1,k)  * (37.*(p(2:i1,3:j1+1,k)+p(2:i1,2:j1  ,k)) -8.*(p(2:i1,4:j1+2,k)+p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)+p(2:i1, 0:j1-2,k)))  &
-  -abs(v0(2:i1,3:j1+1,k)) * (10.*(p(2:i1,3:j1+1,k)-p(2:i1,2:j1  ,k)) -5.*(p(2:i1,4:j1+2,k)-p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)-p(2:i1, 0:j1-2,k)))  &
-     -v0(2:i1,2:j1  ,k)  * (37.*(p(2:i1,2:j1,  k)+p(2:i1,1:j1-1,k)) -8.*(p(2:i1,3:j1+1,k)+p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)+p(2:i1,-1:j1-3,k))) &
- +abs(v0(2:i1,2:j1  ,k)) * (10.*(p(2:i1,2:j1,  k)-p(2:i1,1:j1-1,k)) -5.*(p(2:i1,3:j1+1,k)-p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)-p(2:i1,-1:j1-3,k))) &
- ) *dyi/60. + &
-    (  w0(2:i1,2:j1,k+1) * ( rhobf(k+1)/rhobf(k) * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k)) &
-      -w0(2:i1,2:j1,k)   * ( rhobf(k-1)/rhobf(k) * p(2:i1,2:j1,k-1) +  p(2:i1,2:j1,k)) &
-    ) / (2. * dzf(k)) &
-)
-enddo
-
-
-
-
-!  do k=1,kmax
-!     !rhobfinvk = 1./rhobf(k)
-!     inv2dzfk = 1./(2. * dzf(k))
+!k = 1
+!q(2:i1 ,2:j1,k) = q(2:i1 ,2:j1,k) - (&
+!(    u0(3:i1+1,2:j1,k)  * (37.*(p(3:i1+1,2:j1,k)+p(2:i1,2:j1,k))  -8.*(p(4:i1+2,2:j1,k)+p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)+p( 0:i1-2,2:j1,k)))  &
+!-abs(u0(3:i1+1,2:j1,k)) * (10.*(p(3:i1+1,2:j1,k)-p(2:i1,2:j1,k))  -5.*(p(4:i1+2,2:j1,k)-p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)-p( 0:i1-2,2:j1,k)))  &
+!    -u0(2:i1  ,2:j1,k)  * (37.*(p(2:i1,2:j1,k)  +p(1:i1-1,2:j1,k))-8.*(p(3:i1+1,2:j1,k)+p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)+p(-1:i1-3,2:j1,k))) &
+!+abs(u0(2:i1,  2:j1,k)) * (10.*(p(2:i1,2:j1,k)  -p(1:i1-1,2:j1,k))-5.*(p(3:i1+1,2:j1,k)-p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)-p(-1:i1-3,2:j1,k))) &
+!)*dxi/60. + &
+!(    v0(2:i1,3:j1+1,k)  * (37.*(p(2:i1,3:j1+1,k)+p(2:i1,2:j1  ,k)) -8.*(p(2:i1,4:j1+2,k)+p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)+p(2:i1, 0:j1-2,k)))  &
+!-abs(v0(2:i1,3:j1+1,k)) * (10.*(p(2:i1,3:j1+1,k)-p(2:i1,2:j1  ,k)) -5.*(p(2:i1,4:j1+2,k)-p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)-p(2:i1, 0:j1-2,k)))  &
+!    -v0(2:i1,2:j1  ,k)  * (37.*(p(2:i1,2:j1,  k)+p(2:i1,1:j1-1,k)) -8.*(p(2:i1,3:j1+1,k)+p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)+p(2:i1,-1:j1-3,k))) &
+!+abs(v0(2:i1,2:j1  ,k)) * (10.*(p(2:i1,2:j1,  k)-p(2:i1,1:j1-1,k)) -5.*(p(2:i1,3:j1+1,k)-p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)-p(2:i1,-1:j1-3,k))) &
+!)*dyi/60. + &
+!(  w0(2:i1,2:j1,k+1) * ( rhobf(k+1)/rhobf(k) * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k)) ) * (1 / (2.*dzf(k))) &
+!)
+ 
+!do k = 2, kmax
 !     rhobf_p = rhobf(k+1)/rhobf(k)
-!     rhobf_m = rhobf(k-1)/rhobf(k)     
-!    do j=2,j1
-!      do i=2,i1
+!     rhobf_m = rhobf(k-1)/rhobf(k)
+!     inv2dzfk = 1./(2. * dzf(k))
+! q(2:i1 ,2:j1,k) = q(2:i1 ,2:j1,k) - (&
+! (    u0(3:i1+1,2:j1,k)  * (37.*(p(3:i1+1,2:j1,k)+p(2:i1,2:j1,k))  -8.*(p(4:i1+2,2:j1,k)+p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)+p( 0:i1-2,2:j1,k)))  &
+! -abs(u0(3:i1+1,2:j1,k)) * (10.*(p(3:i1+1,2:j1,k)-p(2:i1,2:j1,k))  -5.*(p(4:i1+2,2:j1,k)-p(1:i1-1,2:j1,k))+(p(5:i1+3,2:j1,k)-p( 0:i1-2,2:j1,k)))  &
+!     -u0(2:i1  ,2:j1,k)  * (37.*(p(2:i1,2:j1,k)  +p(1:i1-1,2:j1,k))-8.*(p(3:i1+1,2:j1,k)+p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)+p(-1:i1-3,2:j1,k))) &
+! +abs(u0(2:i1,  2:j1,k)) * (10.*(p(2:i1,2:j1,k)  -p(1:i1-1,2:j1,k))-5.*(p(3:i1+1,2:j1,k)-p(0:i1-2,2:j1,k))+(p(4:i1+2,2:j1,k)-p(-1:i1-3,2:j1,k))) &
+! )*dxi/60. + &
+! (    v0(2:i1,3:j1+1,k)  * (37.*(p(2:i1,3:j1+1,k)+p(2:i1,2:j1  ,k)) -8.*(p(2:i1,4:j1+2,k)+p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)+p(2:i1, 0:j1-2,k)))  &
+!  -abs(v0(2:i1,3:j1+1,k)) * (10.*(p(2:i1,3:j1+1,k)-p(2:i1,2:j1  ,k)) -5.*(p(2:i1,4:j1+2,k)-p(2:i1,1:j1-1,k))+(p(2:i1,5:j1+3,k)-p(2:i1, 0:j1-2,k)))  &
+!     -v0(2:i1,2:j1  ,k)  * (37.*(p(2:i1,2:j1,  k)+p(2:i1,1:j1-1,k)) -8.*(p(2:i1,3:j1+1,k)+p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)+p(2:i1,-1:j1-3,k))) &
+! +abs(v0(2:i1,2:j1  ,k)) * (10.*(p(2:i1,2:j1,  k)-p(2:i1,1:j1-1,k)) -5.*(p(2:i1,3:j1+1,k)-p(2:i1,0:j1-2,k))+(p(2:i1,4:j1+2,k)-p(2:i1,-1:j1-3,k))) &
+! ) *dyi/60. + &
+!    (  w0(2:i1,2:j1,k+1) * ( rhobf_p * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k)) &
+!      -w0(2:i1,2:j1,k)   * ( rhobf_m * p(2:i1,2:j1,k-1) +  p(2:i1,2:j1,k)) &
+!    ) * inv2dzfk  &
+!)
+!enddo
 
-!        if(k==1) then
 
-!          q(i,j,k)  = q(i,j,k) & 
-!- ( &
-!                ( &
-!                  u0(i+1,j,k)/60.&
-!                  *(37.*(p(i+1,j,k)+p(i,j,k))-8.*(p(i+2,j,k)+p(i-1,j,k))+(p(i+3,j,k)+p(i-2,j,k)))&
-!                  -abs(u0(i+1,j,k))/60.&
-!                  *(10.*(p(i+1,j,k)-p(i,j,k))-5.*(p(i+2,j,k)-p(i-1,j,k))+(p(i+3,j,k)-p(i-2,j,k)))&
-!                  -u0(i,j,k)/60.&
-!                  *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
-!                  +abs(u0(i,j,k))/60.&
-!                  *(10.*(p(i,j,k)-p(i-1,j,k))-5.*(p(i+1,j,k)-p(i-2,j,k))+(p(i+2,j,k)-p(i-3,j,k)))&
-!                  )*dxi&
-!                +(&
-!                  v0(i,j+1,k)/60.&
-!                  *(37.*(p(i,j+1,k)+p(i,j,k))-8.*(p(i,j+2,k)+p(i,j-1,k))+(p(i,j+3,k)+p(i,j-2,k)))&
-!                  -abs(v0(i,j+1,k))/60.&
-!                  *(10.*(p(i,j+1,k)-p(i,j,k))-5.*(p(i,j+2,k)-p(i,j-1,k))+(p(i,j+3,k)-p(i,j-2,k)))&
-!                  -v0(i,j,k)/60.&
-!                  *(37.*(p(i,j,k)+p(i,j-1,k))-8.*(p(i,j+1,k)+p(i,j-2,k))+(p(i,j+2,k)+p(i,j-3,k)))&
-!                  +abs(v0(i,j,k))/60.&
-!                  *(10.*(p(i,j,k)-p(i,j-1,k))-5.*(p(i,j+1,k)-p(i,j-2,k))+(p(i,j+2,k)-p(i,j-3,k))) &
-!                  )* dyi &
-!                + ( &
-!                w0(i,j,k+1) * (rhobf_p * p(i,j,k+1) + p(i,j,k)) &
-!                ) * inv2dzfk  &
-!                )
 
-!        else
-           
-!            q(i,j,k)  = q(i,j,k)- (  &
-            !      ( &
-            !          u0(i+1,j,k)/60.&
-            !          *(37.*(p(i+1,j,k)+p(i,j,k))-8.*(p(i+2,j,k)+p(i-1,j,k))+(p(i+3,j,k)+p(i-2,j,k)))&
-            !          -abs(u0(i+1,j,k))/60.&
-            !          *(10.*(p(i+1,j,k)-p(i,j,k))-5.*(p(i+2,j,k)-p(i-1,j,k))+(p(i+3,j,k)-p(i-2,j,k)))&
-            !          -u0(i,j,k)/60.&
-            !          *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
-            !          +abs(u0(i,j,k))/60.&
-            !          *(10.*(p(i,j,k)-p(i-1,j,k))-5.*(p(i+1,j,k)-p(i-2,j,k))+(p(i+2,j,k)-p(i-3,j,k)))&
-            !      )*dxi&
-!                +(&
-!                      v0(i,j+1,k)/60.&
-!                      *(37.*(p(i,j+1,k)+p(i,j,k))-8.*(p(i,j+2,k)+p(i,j-1,k))+(p(i,j+3,k)+p(i,j-2,k)))&
-!                      -abs(v0(i,j+1,k))/60.&
-!                      *(10.*(p(i,j+1,k)-p(i,j,k))-5.*(p(i,j+2,k)-p(i,j-1,k))+(p(i,j+3,k)-p(i,j-2,k)))&
-!                      -v0(i,j,k)/60.&
-!                      *(37.*(p(i,j,k)+p(i,j-1,k))-8.*(p(i,j+1,k)+p(i,j-2,k))+(p(i,j+2,k)+p(i,j-3,k)))&
-!                      +abs(v0(i,j,k))/60.&
-!                      *(10.*(p(i,j,k)-p(i,j-1,k))-5.*(p(i,j+1,k)-p(i,j-2,k))+(p(i,j+2,k)-p(i,j-3,k)))&
-!                  )* dyi &
-!                + ( &
-!                  w0(i,j,k+1) * (rhobf_p * p(i,j,k+1) +  p(i,j,k)) &
-!                  -w0(i,j,k)  * (rhobf_m * p(i,j,k-1) +  p(i,j,k)) &
-!                  ) * inv2dzfk &
-!                  )
-!        end if
 
-!      end do
-!    end do
-!  end do
+  do k=1,kmax
+     !rhobfinvk = 1./rhobf(k)
+     inv2dzfk = 1./(2. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)     
+    do j=2,j1
+       do i=2,i1+1
+          iflow = (     u0(i,j,k) /60. *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
+                   -abs(u0(i,j,k))/60. *(10.*(p(i,j,k)-p(i-1,j,k))-5.*(p(i+1,j,k)-p(i-2,j,k))+(p(i+2,j,k)-p(i-3,j,k)))&
+                   )*dxi
+          q(i,j,k)  = q(i,j,k) + iflow 
+          q(i-1,j,k)  = q(i-1,j,k) - iflow
+       enddo
+    enddo
+    do i=2,i1
+       do j=2,j1+1
+
+          jflow = (      v0(i,j,k) /60. *(37.*(p(i,j,k)+p(i,j-1,k))-8.*(p(i,j+1,k)+p(i,j-2,k))+(p(i,j+2,k)+p(i,j-3,k)))&
+                    -abs(v0(i,j,k))/60. *(10.*(p(i,j,k)-p(i,j-1,k))-5.*(p(i,j+1,k)-p(i,j-2,k))+(p(i,j+2,k)-p(i,j-3,k)))&
+                    )* dyi 
+          
+          
+          !kflow = -w0(i,j,k+1) * (rhobf_p * p(i,j,k+1) + p(i,j,k))  * inv2dzfk 
+          
+          q(i,j,k)  = q(i,j,k) + jflow 
+          q(i,j-1,k)  = q(i,j-1,k) - jflow 
+      end do
+   end do
+
+   if (k == 1) then
+      q(2:i1 ,2:j1,k ) = q(2:i1 ,2:j1,k ) - &
+           (  w0(2:i1,2:j1,k+1) * (  rhobf_p * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k))  &
+           )  * inv2dzfk
+   else
+      q(2:i1 ,2:j1,k ) = q(2:i1 ,2:j1,k ) - &
+           (  w0(2:i1,2:j1,k+1) * ( rhobf_p * p(2:i1,2:j1,k+1) +  p(2:i1,2:j1,k)) &
+             -w0(2:i1,2:j1,k)   * ( rhobf_m * p(2:i1,2:j1,k-1) +  p(2:i1,2:j1,k)) &
+           ) * inv2dzfk
+   endif
+  end do
+
+
+
+!   do k=1,kmax
+!      !rhobfinvk = 1./rhobf(k)
+!      inv2dzfk = 1./(2. * dzf(k))
+!      rhobf_p = rhobf(k+1)/rhobf(k)
+!      rhobf_m = rhobf(k-1)/rhobf(k)     
+!     do j=2,j1
+!       do i=2,i1 
+!         if(k==1) then
+!           q(i,j,k)  = q(i,j,k) & 
+! - ( &
+!                 ( &
+!                   u0(i+1,j,k)/60.&
+!                   *(37.*(p(i+1,j,k)+p(i,j,k))-8.*(p(i+2,j,k)+p(i-1,j,k))+(p(i+3,j,k)+p(i-2,j,k)))&
+!                   -abs(u0(i+1,j,k))/60.&
+!                   *(10.*(p(i+1,j,k)-p(i,j,k))-5.*(p(i+2,j,k)-p(i-1,j,k))+(p(i+3,j,k)-p(i-2,j,k)))&
+!                   -u0(i,j,k)/60.&
+!                   *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
+!                   +abs(u0(i,j,k))/60.&
+!                   *(10.*(p(i,j,k)-p(i-1,j,k))-5.*(p(i+1,j,k)-p(i-2,j,k))+(p(i+2,j,k)-p(i-3,j,k)))&
+!                   )*dxi&
+!                 +(&
+!                   v0(i,j+1,k)/60.&
+!                   *(37.*(p(i,j+1,k)+p(i,j,k))-8.*(p(i,j+2,k)+p(i,j-1,k))+(p(i,j+3,k)+p(i,j-2,k)))&
+!                   -abs(v0(i,j+1,k))/60.&
+!                   *(10.*(p(i,j+1,k)-p(i,j,k))-5.*(p(i,j+2,k)-p(i,j-1,k))+(p(i,j+3,k)-p(i,j-2,k)))&
+!                   -v0(i,j,k)/60.&
+!                   *(37.*(p(i,j,k)+p(i,j-1,k))-8.*(p(i,j+1,k)+p(i,j-2,k))+(p(i,j+2,k)+p(i,j-3,k)))&
+!                   +abs(v0(i,j,k))/60.&
+!                   *(10.*(p(i,j,k)-p(i,j-1,k))-5.*(p(i,j+1,k)-p(i,j-2,k))+(p(i,j+2,k)-p(i,j-3,k))) &
+!                   )* dyi &
+!                 + ( &
+!                 w0(i,j,k+1) * (rhobf_p * p(i,j,k+1) + p(i,j,k)) &
+!                 ) * inv2dzfk  &
+!                 )
+!         else
+          
+!             q(i,j,k)  = q(i,j,k)- (  &
+!                  ( &
+!                      u0(i+1,j,k)/60.&
+!                       *(37.*(p(i+1,j,k)+p(i,j,k))-8.*(p(i+2,j,k)+p(i-1,j,k))+(p(i+3,j,k)+p(i-2,j,k)))&
+!                       -abs(u0(i+1,j,k))/60.&
+!                       *(10.*(p(i+1,j,k)-p(i,j,k))-5.*(p(i+2,j,k)-p(i-1,j,k))+(p(i+3,j,k)-p(i-2,j,k)))&
+!                       -u0(i,j,k)/60.&
+!                       *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
+!                       +abs(u0(i,j,k))/60.&
+!                       *(10.*(p(i,j,k)-p(i-1,j,k))-5.*(p(i+1,j,k)-p(i-2,j,k))+(p(i+2,j,k)-p(i-3,j,k)))&
+!                   )*dxi&
+!                 +(&
+!                       v0(i,j+1,k)/60.&
+!                       *(37.*(p(i,j+1,k)+p(i,j,k))-8.*(p(i,j+2,k)+p(i,j-1,k))+(p(i,j+3,k)+p(i,j-2,k)))&
+!                       -abs(v0(i,j+1,k))/60.&
+!                       *(10.*(p(i,j+1,k)-p(i,j,k))-5.*(p(i,j+2,k)-p(i,j-1,k))+(p(i,j+3,k)-p(i,j-2,k)))&
+!                       -v0(i,j,k)/60.&
+!                       *(37.*(p(i,j,k)+p(i,j-1,k))-8.*(p(i,j+1,k)+p(i,j-2,k))+(p(i,j+2,k)+p(i,j-3,k)))&
+!                       +abs(v0(i,j,k))/60.&
+!                       *(10.*(p(i,j,k)-p(i,j-1,k))-5.*(p(i,j+1,k)-p(i,j-2,k))+(p(i,j+2,k)-p(i,j-3,k)))&
+!                   )* dyi &
+!                 + ( &
+!                   w0(i,j,k+1) * (rhobf_p * p(i,j,k+1) +  p(i,j,k)) &
+!                   -w0(i,j,k)  * (rhobf_m * p(i,j,k-1) +  p(i,j,k)) &
+!                   ) * inv2dzfk &
+!                   )
+!         end if
+!       end do
+!     end do
+!   end do
+
 
 end subroutine advecc_52
 
