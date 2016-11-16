@@ -205,6 +205,8 @@ save
       real :: ijtot
       real, allocatable :: dzf(:)         !<  thickness of full level
       real, allocatable :: dzh(:)         !<  thickness of half level
+      real, allocatable :: invdzf(:)         !<  inverse thickness of full level
+      real, allocatable :: invdzh(:)         !<  inverse thickness of half level
       real, allocatable :: zh(:)          !<  height of half level [m]
       real, allocatable :: zf(:)          !<  height of full level [m]
       real :: xsize    = -1 !<  domain size in x-direction
@@ -359,6 +361,8 @@ contains
     ! Create the physical grid variables
     allocate(dzf(k1))
     allocate(dzh(k1))
+    allocate(invdzf(k1))
+    allocate(invdzh(k1))
     allocate(zh(k1))
     allocate(zf(k1))
     allocate(delta(k1))
@@ -407,9 +411,11 @@ contains
     do k=2,k1
       dzh(k) = zf(k) - zf(k-1)
     end do
+    
+    invdzf = 1./dzf
+    invdzh = 1./dzh
 
     do k=1,k1
-
       delta(k) = (dx*dy*dzf(k))**(1./3.)
     end do
 

@@ -220,7 +220,7 @@ contains
 !                                                                 |
 !-----------------------------------------------------------------|
 
-  use modglobal, only : i1,j1,kmax,dzh,nsv,lmomsubs
+  use modglobal, only : i1,j1,kmax,invdzh,nsv,lmomsubs
   use modfields, only : up,vp,thlp,qtp,svp,&
                         whls, u0av,v0av,thl0,qt0,sv0,u0,v0,&
                         dudxls,dudyls,dvdxls,dvdyls,dthldxls,dthldyls,dqtdxls,dqtdyls,dqtdtls
@@ -244,14 +244,14 @@ contains
     do i=2,i1
       k = 1
       if (whls(2).lt.0) then !neglect effect of mean ascending on tendencies at the lowest full level
-        subs_thl     = 0.5*whls(2)  *(thl0(i,j,2)-thl0(i,j,1))/dzh(2)
-        subs_qt      = 0.5*whls(2)  *(qt0(i,j,2)-qt0(i,j,1) )/dzh(2)
+        subs_thl     = 0.5*whls(2)  *(thl0(i,j,2)-thl0(i,j,1))*invdzh(2)
+        subs_qt      = 0.5*whls(2)  *(qt0(i,j,2)-qt0(i,j,1) )*invdzh(2)
         if (lmomsubs) then
-          subs_u     = 0.5*whls(2)  *(u0(i,j,2)-u0(i,j,1))/dzh(2)
-          subs_v     = 0.5*whls(2)  *(v0(i,j,2)-v0(i,j,1))/dzh(2)
+          subs_u     = 0.5*whls(2)  *(u0(i,j,2)-u0(i,j,1))*invdzh(2)
+          subs_v     = 0.5*whls(2)  *(v0(i,j,2)-v0(i,j,1))*invdzh(2)
         endif
         do n=1,nsv
-          subs_sv =  0.5*whls(2)  *(sv0(i,j,2,n)-sv0(i,j,1,n)  )/dzh(2)
+          subs_sv =  0.5*whls(2)  *(sv0(i,j,2,n)-sv0(i,j,1,n)  )*invdzh(2)
           svp(i,j,1,n) = svp(i,j,1,n)-subs_sv
         enddo
       endif
@@ -270,25 +270,25 @@ contains
     do j=2,j1
       do i=2,i1
         if (whls(kp).lt.0) then   !downwind scheme for subsidence
-          subs_thl    = whls(kp) * (thl0(i,j,kp) - thl0(i,j,k))/dzh(kp)
-          subs_qt     = whls(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))/dzh(kp)
+          subs_thl    = whls(kp) * (thl0(i,j,kp) - thl0(i,j,k))*invdzh(kp)
+          subs_qt     = whls(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))*invdzh(kp)
           if (lmomsubs) then
-            subs_u    = whls(kp) * (u0(i,j,kp) - u0(i,j,k))/dzh(kp)
-            subs_v    = whls(kp) * (v0(i,j,kp) - v0(i,j,k))/dzh(kp)
+            subs_u    = whls(kp) * (u0(i,j,kp) - u0(i,j,k))*invdzh(kp)
+            subs_v    = whls(kp) * (v0(i,j,kp) - v0(i,j,k))*invdzh(kp)
           endif
           do n=1,nsv
-            subs_sv   = whls(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))/dzh(kp)
+            subs_sv   = whls(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))*invdzh(kp)
             svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
           enddo
         else !downwind scheme for mean upward motions
-          subs_thl    = whls(k) * (thl0(i,j,k) - thl0(i,j,km))/dzh(k)
-          subs_qt     = whls(k) * (qt0 (i,j,k) - qt0 (i,j,km))/dzh(k)
+          subs_thl    = whls(k) * (thl0(i,j,k) - thl0(i,j,km))*invdzh(k)
+          subs_qt     = whls(k) * (qt0 (i,j,k) - qt0 (i,j,km))*invdzh(k)
           if (lmomsubs) then
-            subs_u    = whls(k) * (u0(i,j,k) - u0(i,j,km))/dzh(k)
-            subs_v    = whls(k) * (v0(i,j,k) - v0(i,j,km))/dzh(k)
+            subs_u    = whls(k) * (u0(i,j,k) - u0(i,j,km))*invdzh(k)
+            subs_v    = whls(k) * (v0(i,j,k) - v0(i,j,km))*invdzh(k)
           endif
           do n=1,nsv
-            subs_sv   = whls(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))/dzh(k)
+            subs_sv   = whls(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))*invdzh(k)
             svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
           enddo
         endif
