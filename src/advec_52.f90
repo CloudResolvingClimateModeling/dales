@@ -135,10 +135,6 @@ subroutine advecc_52(p, q)
 
 
   do k=1,kmax
-     !rhobfinvk = 1./rhobf(k)
-     inv2dzfk = 1./(2. * dzf(k))
-     rhobf_p = rhobf(k+1)/rhobf(k)
-     rhobf_m = rhobf(k-1)/rhobf(k)     
     do j=2,j1
        do i=2,i1+1
           iflow = (     u0(i,j,k) /60. *(37.*(p(i,j,k)+p(i-1,j,k))-8.*(p(i+1,j,k)+p(i-2,j,k))+(p(i+2,j,k)+p(i-3,j,k)))&
@@ -160,8 +156,15 @@ subroutine advecc_52(p, q)
           
           q(i,j,k)  = q(i,j,k) + jflow 
           q(i,j-1,k)  = q(i,j-1,k) - jflow 
-      end do
-   end do
+      enddo
+   enddo
+enddo
+
+do k=1,kmax
+     !rhobfinvk = 1./rhobf(k)
+     inv2dzfk = 1./(2. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)     
 
    if (k == 1) then
       q(2:i1 ,2:j1,k ) = q(2:i1 ,2:j1,k ) - &
