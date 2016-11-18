@@ -41,9 +41,9 @@ save
       integer ::  nsv = 0       !< Number of additional scalar fields
       integer ::  ncosv = 0
 
-      integer ::  ih=3
-      integer ::  jh=3
-      integer ::  kh=1
+      integer, parameter ::  ih=3
+      integer, parameter ::  jh=3
+      integer, parameter ::  kh=1
       integer ::  kcb=0
 
       character(256) :: fname_options = 'namoptions'
@@ -277,35 +277,36 @@ contains
     j2=jmax+2
     !set the number of ghost cells. NB: This switch has to run in order of required ghost cells
     advarr = (/iadv_mom,iadv_tke,iadv_thl,iadv_qt/)
-    if     (any(advarr==iadv_cd6).or.any(iadv_sv(1:nsv)==iadv_cd6)) then
-      ih = 3
-      jh = 3
-      kh = 1
-    elseif (any(advarr==iadv_62).or.any(iadv_sv(1:nsv)==iadv_62)) then
-      ih = 3
-      jh = 3
-      kh = 1
-    elseif (any(advarr==iadv_5th).or.any(iadv_sv(1:nsv)==iadv_5th)) then
-      ih = 3
-      jh = 3
-      kh = 1
-    elseif (any(advarr==iadv_52).or.any(iadv_sv(1:nsv)==iadv_52)) then
-      ih = 3
-      jh = 3
-      kh = 1
-    elseif (any(advarr==iadv_hybrid).or.any(iadv_sv(1:nsv)==iadv_hybrid)) then
-      ih = 3
-      jh = 3
-      kh = 1
-    elseif (any(advarr==iadv_kappa).or.any(iadv_sv(1:nsv)==iadv_kappa)) then
-      ih = 2
-      jh = 2
-      kh = 1
-    elseif (any(advarr==iadv_cd2).or.any(iadv_sv(1:nsv)==iadv_cd2)) then
-      ih = 1
-      jh = 1
-      kh = 1
-    end if
+    ! if     (any(advarr==iadv_cd6).or.any(iadv_sv(1:nsv)==iadv_cd6)) then
+    !   ih = 3
+    !   jh = 3
+    !   kh = 1
+    ! elseif (any(advarr==iadv_62).or.any(iadv_sv(1:nsv)==iadv_62)) then
+    !   ih = 3
+    !   jh = 3
+    !   kh = 1
+    ! elseif (any(advarr==iadv_5th).or.any(iadv_sv(1:nsv)==iadv_5th)) then
+    !   ih = 3
+    !   jh = 3
+    !   kh = 1
+    ! elseif (any(advarr==iadv_52).or.any(iadv_sv(1:nsv)==iadv_52)) then
+    !   ih = 3
+    !   jh = 3
+    !   kh = 1
+    ! elseif (any(advarr==iadv_hybrid).or.any(iadv_sv(1:nsv)==iadv_hybrid)) then
+    !   ih = 3
+    !   jh = 3
+    !   kh = 1
+    ! elseif (any(advarr==iadv_kappa).or.any(iadv_sv(1:nsv)==iadv_kappa)) then
+    !   ih = 2
+    !   jh = 2
+    !   kh = 1
+    ! elseif (any(advarr==iadv_cd2).or.any(iadv_sv(1:nsv)==iadv_cd2)) then
+    !   ih = 1
+    !   jh = 1
+    !   kh = 1
+    ! end if
+    !!!!!!!!!!!!!! setting ih, jh, kh as parameters. ih=jh=3, kh=1
 
     ncosv = max(2*nsv-3,0)
 
