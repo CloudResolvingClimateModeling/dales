@@ -250,6 +250,8 @@ contains
           subs_u     = 0.5*whls(2)  *(u0(i,j,2)-u0(i,j,1))*invdzh(2)
           subs_v     = 0.5*whls(2)  *(v0(i,j,2)-v0(i,j,1))*invdzh(2)
         endif
+
+        !DIR$ NOUNROLL
         do n=1,nsv
           subs_sv =  0.5*whls(2)  *(sv0(i,j,2,n)-sv0(i,j,1,n)  )*invdzh(2)
           svp(i,j,1,n) = svp(i,j,1,n)-subs_sv
@@ -272,34 +274,81 @@ contains
         if (whls(kp).lt.0) then   !downwind scheme for subsidence
           subs_thl    = whls(kp) * (thl0(i,j,kp) - thl0(i,j,k))*invdzh(kp)
           subs_qt     = whls(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))*invdzh(kp)
-          if (lmomsubs) then
-            subs_u    = whls(kp) * (u0(i,j,kp) - u0(i,j,k))*invdzh(kp)
-            subs_v    = whls(kp) * (v0(i,j,kp) - v0(i,j,k))*invdzh(kp)
-          endif
-          do n=1,nsv
-            subs_sv   = whls(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))*invdzh(kp)
-            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
-          enddo
+!          if (lmomsubs) then
+!            subs_u    = whls(kp) * (u0(i,j,kp) - u0(i,j,k))*invdzh(kp)
+!            subs_v    = whls(kp) * (v0(i,j,kp) - v0(i,j,k))*invdzh(kp)
+!          endif
+!          !DIR$ NOUNROLL
+!          do n=1,nsv
+!            subs_sv   = whls(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))*invdzh(kp)
+!            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+!          enddo
         else !downwind scheme for mean upward motions
           subs_thl    = whls(k) * (thl0(i,j,k) - thl0(i,j,km))*invdzh(k)
           subs_qt     = whls(k) * (qt0 (i,j,k) - qt0 (i,j,km))*invdzh(k)
-          if (lmomsubs) then
-            subs_u    = whls(k) * (u0(i,j,k) - u0(i,j,km))*invdzh(k)
-            subs_v    = whls(k) * (v0(i,j,k) - v0(i,j,km))*invdzh(k)
-          endif
-          do n=1,nsv
-            subs_sv   = whls(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))*invdzh(k)
-            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
-          enddo
+!          if (lmomsubs) then
+!            subs_u    = whls(k) * (u0(i,j,k) - u0(i,j,km))*invdzh(k)
+!            subs_v    = whls(k) * (v0(i,j,k) - v0(i,j,km))*invdzh(k)
+!          endif
+!          !DIR$ NOUNROLL
+!          do n=1,nsv
+!            subs_sv   = whls(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))*invdzh(k)
+!            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+!          enddo
         endif
 
         thlp(i,j,k) = thlp(i,j,k)-u0av(k)*dthldxls(k)-v0av(k)*dthldyls(k)-subs_thl
         qtp (i,j,k) = qtp (i,j,k)-u0av(k)*dqtdxls (k)-v0av(k)*dqtdyls (k)-subs_qt+dqtdtls(k)
-        up  (i,j,k) = up  (i,j,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)-subs_u
-        vp  (i,j,k) = vp  (i,j,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)-subs_v
+!        up  (i,j,k) = up  (i,j,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)-subs_u
+!        vp  (i,j,k) = vp  (i,j,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)-subs_v
+
       enddo
     enddo
   enddo
+
+ if (lmomsubs) then
+    do k=2,kmax
+    kp=k+1
+    km=k-1
+    do j=2,j1
+       do i=2,i1
+           if (whls(kp).lt.0) then   !downwind scheme for subsidence
+
+           else                      !downwind scheme for mean upward motions
+              
+           endif
+           up  (i,j,k) = up  (i,j,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)-subs_u
+           vp  (i,j,k) = vp  (i,j,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)-subs_v
+       enddo
+    enddo
+  enddo
+else ! no lsmomsubs - still need to handle the ls advection part
+    do k=2,kmax
+          if (dudxls(k) /= 0 .or. dudyls(k) /= 0) then 
+          up  (:,:,k) = up  (:,:,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)
+          endif
+          if (dvdxls(k) /= 0 .or. dvdyls(k) /= 0 ) then 
+          vp  (:,:,k) = vp  (:,:,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)
+          endif
+  enddo
+endif
+
+!scalar variables
+do n=1,nsv
+  do k=2,kmax
+    kp=k+1
+    km=k-1
+    do j=2,j1
+      do i=2,i1
+          if (whls(kp).lt.0) then   !downwind scheme for subsidence
+             svp(i,j,k,n) = svp(i,j,k,n) -  whls(kp) * (sv0(i,j,kp,n) - sv0(i,j,k,n))*invdzh(kp)
+          else                      !downwind scheme for mean upward motions
+             svp(i,j,k,n) = svp(i,j,k,n) -  whls(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))*invdzh(k)
+          endif
+      enddo
+    enddo
+  enddo
+enddo
 
   return
   end subroutine lstend
