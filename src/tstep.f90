@@ -174,29 +174,59 @@ subroutine tstep_integrate
   rk3coef = rdt / (4. - dble(rk3step))
   wp_store = wp
 
-  do k=1,kmax
-    do j=2,j1
-      do i=2,i1
+!  do k=1,kmax
+!    do j=2,j1
+!      do i=2,i1
 
-        u0(i,j,k)   = um(i,j,k)   + rk3coef * up(i,j,k)
-        v0(i,j,k)   = vm(i,j,k)   + rk3coef * vp(i,j,k)
-        w0(i,j,k)   = wm(i,j,k)   + rk3coef * wp(i,j,k)
-        thl0(i,j,k) = thlm(i,j,k) + rk3coef * thlp(i,j,k)
-        qt0(i,j,k)  = qtm(i,j,k)  + rk3coef * qtp(i,j,k)
-        e120(i,j,k) = e12m(i,j,k) + rk3coef * e12p(i,j,k)
+!        u0(i,j,k)   = um(i,j,k)   + rk3coef * up(i,j,k)
+!        v0(i,j,k)   = vm(i,j,k)   + rk3coef * vp(i,j,k)
+!        w0(i,j,k)   = wm(i,j,k)   + rk3coef * wp(i,j,k)
+!        thl0(i,j,k) = thlm(i,j,k) + rk3coef * thlp(i,j,k)
+!        qt0(i,j,k)  = qtm(i,j,k)  + rk3coef * qtp(i,j,k)
+!        e120(i,j,k) = e12m(i,j,k) + rk3coef * e12p(i,j,k)
 
-        e120(i,j,k) = max(e12min,e120(i,j,k))
-        e12m(i,j,k) = max(e12min,e12m(i,j,k))
+ !       e120(i,j,k) = max(e12min,e120(i,j,k))
+ !       e12m(i,j,k) = max(e12min,e12m(i,j,k))
 
-        do n=1,nsv
-          sv0(i,j,k,n) = svm(i,j,k,n) + rk3coef * svp(i,j,k,n)
-        end do
+ !       do n=1,nsv
+ !         sv0(i,j,k,n) = svm(i,j,k,n) + rk3coef * svp(i,j,k,n)
+ !       end do
 
-      end do
-    end do
-  end do
+ !     end do
+ !   end do
+ ! end do
 
-  up=0.
+if(rk3step /= 3) then
+  u0   = um   + rk3coef * up
+  v0   = vm   + rk3coef * vp
+  w0   = wm   + rk3coef * wp
+  thl0 = thlm + rk3coef * thlp
+  qt0  = qtm  + rk3coef * qtp
+  e120 =  max(e12min, e12m + rk3coef * e12p)
+  !e120 = max(e12min,e120) combined with previous op
+  ! e12m = max(e12min,e12m) not needed at all ?
+  sv0 = svm + rk3coef * svp
+else ! store result also in um etc !TODO try u0 = um+, um = u0 
+  um   = um   + rk3coef * up
+  u0   = um
+  vm   = vm   + rk3coef * vp
+  v0   = vm
+  wm   = wm   + rk3coef * wp
+  w0   = wm
+  thlm = thlm + rk3coef * thlp
+  thl0 = thlm
+  qtm  = qtm  + rk3coef * qtp
+  qt0  = qtm
+  e12m = max(e12min, e12m + rk3coef * e12p)
+  e120 = e12m 
+  !e120 = max(e12min,e120) combined with previous op
+  ! e12m = max(e12min,e12m) not needed at all ?
+  svm  = svm + rk3coef * svp
+  sv0  = svm
+endif
+         
+
+  up=0. !TODO could set these to the external forcings
   vp=0.
   wp=0.
   thlp=0.
@@ -204,14 +234,14 @@ subroutine tstep_integrate
   svp=0.
   e12p=0.
 
-  if(rk3step == 3) then
-    um = u0
-    vm = v0
-    wm = w0
-    thlm = thl0
-    qtm  = qt0
-    e12m = e120
-    svm = sv0
-  end if
+!  if(rk3step == 3) then
+!    um = u0  ! can avoid these if we compute 3rd timestep directly into the u0 AND um variables
+!    vm = v0
+!    wm = w0
+!    thlm = thl0
+!    qtm  = qt0
+!    e12m = e120
+!    svm = sv0
+!  end if
 
 end subroutine tstep_integrate
