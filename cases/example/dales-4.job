@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH --time=00:10:00
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=4
+#SBATCH --exclude=node019
+
+. /etc/bashrc
+. /etc/profile.d/modules.sh
+module load openmpi/gcc/64
+module load intel/compiler
+
+APP=../../build/dales.exe 
+ARGS=namoptions.001
+OMPI_OPTS="--mca btl ^usnic"
+
+time $MPI_RUN $OMPI_OPTS $APP $ARGS
+
+ 
+hostname
