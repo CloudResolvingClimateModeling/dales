@@ -197,15 +197,16 @@ subroutine tstep_integrate
  ! end do
 
 if(rk3step /= 3) then
-  u0   = um   + rk3coef * up
-  v0   = vm   + rk3coef * vp
-  w0   = wm   + rk3coef * wp
-  thl0 = thlm + rk3coef * thlp
-  qt0  = qtm  + rk3coef * qtp
-  e120 =  max(e12min, e12m + rk3coef * e12p)
+  u0(:,2:j1, 1:kmax)   = um(:,2:j1, 1:kmax)   + rk3coef * up(:,2:j1, 1:kmax)
+  v0(:,2:j1, 1:kmax)   = vm(:,2:j1, 1:kmax)   + rk3coef * vp(:,2:j1, 1:kmax)
+  w0(:,2:j1, 1:kmax)   = wm(:,2:j1, 1:kmax)   + rk3coef * wp(:,2:j1, 1:kmax)
+  thl0(:,2:j1, 1:kmax) = thlm(:,2:j1, 1:kmax) + rk3coef * thlp(:,2:j1, 1:kmax)
+  qt0(:,2:j1, 1:kmax)  = qtm(:,2:j1, 1:kmax)  + rk3coef * qtp(:,2:j1, 1:kmax)
+
+  e120(:,2:j1, 1:kmax) =  max(e12min, e12m(:,2:j1, 1:kmax) + rk3coef * e12p(:,2:j1, 1:kmax))
   !e120 = max(e12min,e120) combined with previous op
   ! e12m = max(e12min,e12m) not needed at all ?
-  sv0 = svm + rk3coef * svp
+  sv0(:,2:j1, 1:kmax,:) = svm(:,2:j1, 1:kmax,:) + rk3coef * svp(:,2:j1, 1:kmax,:)
 else ! store result also in um etc !TODO try u0 = um+, um = u0 
   um   = um   + rk3coef * up
   u0   = um
