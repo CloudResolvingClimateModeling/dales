@@ -56,7 +56,7 @@ subroutine advecc_62(putin, putout)
   do k=1,kmax
      inv2dzfk = 1./(2. * dzf(k))
      rhobf_p = rhobf(k+1)/rhobf(k)
-     rhobf_m = rhobf(k-1)/rhobf(k)
+     if (k > 1) rhobf_m = rhobf(k-1)/rhobf(k)
 
     do j=2,j1
       do i=2,i1
@@ -140,7 +140,7 @@ subroutine advecu_62(putin,putout)
     do k=1,kmax
        inv4dzfk = 1./(4. * dzf(k))
        rhobf_p = rhobf(k+1)/rhobf(k)
-       rhobf_m = rhobf(k-1)/rhobf(k)
+       if (k > 1) rhobf_m = rhobf(k-1)/rhobf(k)
 
       do j=2,j1
         do i=2,i1
@@ -224,7 +224,7 @@ subroutine advecv_62(putin, putout)
     do k=1,kmax
        inv4dzfk = 1./(4. * dzf(k))
        rhobf_p = rhobf(k+1)/rhobf(k)
-       rhobf_m = rhobf(k-1)/rhobf(k)
+       if (k > 1) rhobf_m = rhobf(k-1)/rhobf(k)
 
       do j=2,j1
         do i=2,i1

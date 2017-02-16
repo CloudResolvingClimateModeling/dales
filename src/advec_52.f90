@@ -64,7 +64,7 @@ subroutine advecc_52(putin, putout)
      !rhobfinvk = 1./rhobf(k)
      inv2dzfk = 1./(2. * dzf(k))
      rhobf_p = rhobf(k+1)/rhobf(k)
-     rhobf_m = rhobf(k-1)/rhobf(k)
+     if (k > 1) rhobf_m = rhobf(k-1)/rhobf(k)
     do j=2,j1
       do i=2,i1
 
