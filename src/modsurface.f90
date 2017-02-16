@@ -1170,8 +1170,16 @@ contains
               if(Rib > 0) L = 0.01
               if(Rib < 0) L = -0.01
             end if
-            if(abs((L - Lold)/L) < 1e-4) exit
-            if(iter > 1000) stop 'Obukhov length calculation does not converge!'
+            if(abs((L - Lold)/L) < 1e-4) exit            
+            !if(iter > 1000) stop 'Obukhov length calculation does not converge!'
+            if(iter > 1000) then
+               write(*,*) 'Obukhov length calculation does not converge!'
+               write(*,*) 'qt0(i,j,1)  =', qt0(i,j,1)
+               write(*,*) 'thl0(i,j,1) =',thl0(i,j,1)
+               write(*,*) 'i, j        =', i, j
+               call abort
+            endif
+            
           end do
 
           if (abs(L)>1e6) L = sign(1.0e6,L)
@@ -1304,7 +1312,22 @@ contains
         if(Rib < 0) L = -0.01
       end if
       if(abs((L - Lold)/L) < 1e-4) exit
-      if(iter > 1000) stop 'Obukhov length calculation does not converge!'
+      if(iter > 1000) then
+         write (*,*) 'Obukhov length calculation does not converge! (second time)'
+         write (*,*) 'L       =', L
+         write (*,*) 'oblav   =', oblav
+         write (*,*) 'Lold    =', Lold
+         write (*,*) 'Lstart  =', Lstart
+         write (*,*) 'Lend    =', Lend
+         write (*,*) 'fx      =', fx
+         write (*,*) 'fxdif   =', fxdif
+         write (*,*) 'Rib     =', Rib
+         write (*,*) 'zf(1)   =', zf(1)
+         write (*,*) 'z0hav   =', z0hav
+         call flush
+         call abort
+         !stop 'Obukhov length calculation does not converge!'
+         end if
     end do
 
     if (abs(L)>1e6) L = sign(1.0e6,L)
