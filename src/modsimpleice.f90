@@ -5,9 +5,14 @@
 !>
 !! Calculates ice microphysics in a cheap scheme without prognostic nr
 !!  simpleice is called from *modmicrophysics*
-!! \see  Grabowski, 1998, JAS and Khairoutdinov and Randall, 2006, JAS
+!! \see  Grabowski, 1998, JAS 
+!! and Khairoutdinov and Randall, 2006, JAS 
 !!  \author Steef B\"oing, TU Delft
 !!  \par Revision list
+!
+! http://dx.doi.org/10.1175/1520-0469(1998)055%3C3283:TCRMOL%3E2.0.CO;2
+! http://dx.doi.org/10.1175/JAS3810.1
+!
 !  This file is part of DALES.
 !
 ! DALES is free software; you can redistribute it and/or modify
@@ -142,8 +147,8 @@ module modsimpleice
         if (qr(i,j,k) <= qrmin) then
           qrmask(i,j,k) = .false.
           if(qr(i,j,k)<0.) then
-          qrsmall = qrsmall-qr(i,j,k)
-          qr(i,j,k)=0.
+             qrsmall = qrsmall-qr(i,j,k)
+             qr(i,j,k)=0.
           end if
         else
           qrmask(i,j,k)=.true.
@@ -154,7 +159,7 @@ module modsimpleice
     enddo
 
     if (qrsmall > 0.000001*qrsum) then
-      write(*,*)'amount of neg. qr thrown away is too high  ',timee,' sec'
+      write(*,*)'amount of neg. qr thrown away is too high  ',timee, ' sec', qrsmall, qrsum
     end if
 
 

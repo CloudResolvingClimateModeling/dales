@@ -169,7 +169,7 @@ subroutine tstep_integrate
   implicit none
 
   integer i,j,k,n
-  real rk3coef
+  real rk3coef, negqt
 
   rk3coef = rdt / (4. - dble(rk3step))
   wp_store = wp
@@ -196,6 +196,7 @@ subroutine tstep_integrate
  !   end do
  ! end do
 
+  
 if(rk3step /= 3) then
   u0(:,2:j1, 1:kmax)   = um(:,2:j1, 1:kmax)   + rk3coef * up(:,2:j1, 1:kmax)
   v0(:,2:j1, 1:kmax)   = vm(:,2:j1, 1:kmax)   + rk3coef * vp(:,2:j1, 1:kmax)
@@ -203,6 +204,10 @@ if(rk3step /= 3) then
   thl0(:,2:j1, 1:kmax) = thlm(:,2:j1, 1:kmax) + rk3coef * thlp(:,2:j1, 1:kmax)
   qt0(:,2:j1, 1:kmax)  = qtm(:,2:j1, 1:kmax)  + rk3coef * qtp(:,2:j1, 1:kmax)
 
+  ! get rid of negative qt, measure how much was lost
+  negqt = sum(qt0, qt0 < 0)
+  !where (qt0 < 0) qt0 = 0
+  
   e120(:,2:j1, 1:kmax) =  max(e12min, e12m(:,2:j1, 1:kmax) + rk3coef * e12p(:,2:j1, 1:kmax))
   !e120 = max(e12min,e120) combined with previous op
   ! e12m = max(e12min,e12m) not needed at all ?
@@ -217,6 +222,11 @@ else ! store result also in um etc !TODO try u0 = um+, um = u0
   thlm = thlm + rk3coef * thlp
   thl0 = thlm
   qtm  = qtm  + rk3coef * qtp
+
+  ! get rid of negative qt, measure how much was lost
+  negqt = sum(qtm, qtm < 0)
+  !where (qtm < 0) qtm = 0
+  
   qt0  = qtm
   e12m = max(e12min, e12m + rk3coef * e12p)
   e120 = e12m 
@@ -244,5 +254,6 @@ endif
 !    e12m = e120
 !    svm = sv0
 !  end if
-
+  write (*,*) 'Amount of qt thrown away:', negqt
+  write (*,*) 'Amount of qt in total', sum(qt0)
 end subroutine tstep_integrate
