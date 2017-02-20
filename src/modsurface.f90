@@ -1107,7 +1107,7 @@ contains
 
   end subroutine qtsurf
 
-!> Calculates the Obuhkov length iteratively.
+!> Calculates the Obukhov length iteratively.
   subroutine getobl
     use modglobal, only : zf, rv, rd, grav, i1, j1, i2, j2, cu, cv
     use modfields, only : thl0av, qt0av, u0, v0, thl0, qt0, u0av, v0av
@@ -1146,45 +1146,52 @@ contains
             Rib    = grav / thvs * zf(1) * (thv - thvsl) / horv2
           endif
 
-          iter = 0
-          L = obl(i,j)
+          if (Rib == 0) then
+             ! Rib can be 0 if there is no surface flux
+             ! L is capped at 1e6 below, so use the same cap here
+             L = 1e6
+             write(*,*) 'Obukhov length: Rib = 0 -> setting L=1e6 (1st point)'
+          else
+             iter = 0
+             L = obl(i,j)
 
-          if(Rib * L < 0. .or. abs(L) == 1e5) then
-            if(Rib > 0) L = 0.01
-            if(Rib < 0) L = -0.01
+             if(Rib * L < 0. .or. abs(L) == 1e5) then
+                if(Rib > 0) L = 0.01
+                if(Rib < 0) L = -0.01
+             end if
+
+             do while (.true.)
+                iter    = iter + 1
+                Lold    = L
+                fx      = Rib - zf(1) / L * (log(zf(1) / z0h(i,j)) - psih(zf(1) / L) + psih(z0h(i,j) / L)) /&
+                     (log(zf(1) / z0m(i,j)) - psim(zf(1) / L) + psim(z0m(i,j) / L)) ** 2.
+                Lstart  = L - 0.001*L
+                Lend    = L + 0.001*L
+                fxdif   = ( (- zf(1) / Lstart * (log(zf(1) / z0h(i,j)) - psih(zf(1) / Lstart) + psih(z0h(i,j) / Lstart)) /&
+                     (log(zf(1) / z0m(i,j)) - psim(zf(1) / Lstart) + psim(z0m(i,j) / Lstart)) ** 2.) - (-zf(1) / Lend * &
+                     (log(zf(1) / z0h(i,j)) - psih(zf(1) / Lend) + psih(z0h(i,j) / Lend)) / (log(zf(1) / z0m(i,j)) - psim(zf(1) / Lend)&
+                     + psim(z0m(i,j) / Lend)) ** 2.) ) / (Lstart - Lend)
+                L = L - fx / fxdif
+                if(Rib * L < 0. .or. abs(L) == 1e5) then
+                   if(Rib > 0) L = 0.01
+                   if(Rib < 0) L = -0.01
+                end if
+                if(abs((L - Lold)/L) < 1e-4) exit            
+                !if(iter > 1000) stop 'Obukhov length calculation does not converge!'
+                if(iter > 1000) then
+                   write(*,*) 'Obukhov length calculation does not converge!'
+                   write(*,*) 'qt0(i,j,1)  =', qt0(i,j,1)
+                   write(*,*) 'thl0(i,j,1) =',thl0(i,j,1)
+                   write(*,*) 'i, j        =', i, j
+                   call abort
+                endif
+
+             end do
+
+             if (abs(L)>1e6) L = sign(1.0e6,L)
           end if
-
-          do while (.true.)
-            iter    = iter + 1
-            Lold    = L
-            fx      = Rib - zf(1) / L * (log(zf(1) / z0h(i,j)) - psih(zf(1) / L) + psih(z0h(i,j) / L)) /&
-            (log(zf(1) / z0m(i,j)) - psim(zf(1) / L) + psim(z0m(i,j) / L)) ** 2.
-            Lstart  = L - 0.001*L
-            Lend    = L + 0.001*L
-            fxdif   = ( (- zf(1) / Lstart * (log(zf(1) / z0h(i,j)) - psih(zf(1) / Lstart) + psih(z0h(i,j) / Lstart)) /&
-            (log(zf(1) / z0m(i,j)) - psim(zf(1) / Lstart) + psim(z0m(i,j) / Lstart)) ** 2.) - (-zf(1) / Lend * &
-            (log(zf(1) / z0h(i,j)) - psih(zf(1) / Lend) + psih(z0h(i,j) / Lend)) / (log(zf(1) / z0m(i,j)) - psim(zf(1) / Lend)&
-            + psim(z0m(i,j) / Lend)) ** 2.) ) / (Lstart - Lend)
-            L = L - fx / fxdif
-            if(Rib * L < 0. .or. abs(L) == 1e5) then
-              if(Rib > 0) L = 0.01
-              if(Rib < 0) L = -0.01
-            end if
-            if(abs((L - Lold)/L) < 1e-4) exit            
-            !if(iter > 1000) stop 'Obukhov length calculation does not converge!'
-            if(iter > 1000) then
-               write(*,*) 'Obukhov length calculation does not converge!'
-               write(*,*) 'qt0(i,j,1)  =', qt0(i,j,1)
-               write(*,*) 'thl0(i,j,1) =',thl0(i,j,1)
-               write(*,*) 'i, j        =', i, j
-               call abort
-            endif
-            
-          end do
-
-          if (abs(L)>1e6) L = sign(1.0e6,L)
+          
           obl(i,j) = L
-
         end do
       end do
     end if
@@ -1287,55 +1294,64 @@ contains
 
     Rib   = grav / thvs * zf(1) * (thv - thvs) / horv2
 
-    iter = 0
-    L = oblav
+    if (Rib == 0) then
+       ! Rib can be 0 if there is no surface flux
+       ! L is capped at 1e6 below, so use the same cap here
+       L = 1e6
+       write(*,*) 'Obukhov length: Rib = 0 -> setting L=1e6 (2nd point)'
+    else
+       iter = 0
+       L = oblav
 
-    if(Rib * L < 0. .or. abs(L) == 1e5) then
-      if(Rib > 0) L = 0.01
-      if(Rib < 0) L = -0.01
+       if(Rib * L < 0. .or. abs(L) == 1e5) then
+          if(Rib > 0) L = 0.01
+          if(Rib < 0) L = -0.01
+       end if
+
+       do while (.true.)
+          iter    = iter + 1
+          Lold    = L
+          fx      = Rib - zf(1) / L * (log(zf(1) / z0hav) - psih(zf(1) / L) + psih(z0hav / L)) /&
+               (log(zf(1) / z0mav) - psim(zf(1) / L) + psim(z0mav / L)) ** 2.
+          Lstart  = L - 0.001*L
+          Lend    = L + 0.001*L
+          fxdif   = ( (- zf(1) / Lstart * (log(zf(1) / z0hav) - psih(zf(1) / Lstart) + psih(z0hav / Lstart)) /&
+               (log(zf(1) / z0mav) - psim(zf(1) / Lstart) + psim(z0mav / Lstart)) ** 2.) - (-zf(1) / Lend * (log(zf(1) / z0hav) &
+               - psih(zf(1) / Lend) + psih(z0hav / Lend)) / (log(zf(1) / z0mav) - psim(zf(1) / Lend) &
+               + psim(z0mav / Lend)) ** 2.) ) / (Lstart - Lend)
+          L       = L - fx / fxdif
+          if(Rib * L < 0. .or. abs(L) == 1e5) then
+             if(Rib > 0) L = 0.01
+             if(Rib < 0) L = -0.01
+          end if
+          if(abs((L - Lold)/L) < 1e-4) exit
+          if(iter > 1000) then
+             write (*,*) 'Obukhov length calculation does not converge! (second time)'
+             write (*,*) 'L       =', L
+             write (*,*) 'oblav   =', oblav
+             write (*,*) 'Lold    =', Lold
+             write (*,*) 'Lstart  =', Lstart
+             write (*,*) 'Lend    =', Lend
+             write (*,*) 'fx      =', fx
+             write (*,*) 'fxdif   =', fxdif
+             write (*,*) 'Rib     =', Rib
+             write (*,*) 'zf(1)   =', zf(1)
+             write (*,*) 'z0hav   =', z0hav
+             call flush
+             call abort
+             !stop 'Obukhov length calculation does not converge!'
+          end if
+       end do
+
+       if (abs(L)>1e6) L = sign(1.0e6,L)
+       if(.not. lmostlocal) then
+          if(.not. lhetero) then
+             obl(:,:) = L
+          endif
+       end if
+
     end if
 
-    do while (.true.)
-      iter    = iter + 1
-      Lold    = L
-      fx      = Rib - zf(1) / L * (log(zf(1) / z0hav) - psih(zf(1) / L) + psih(z0hav / L)) /&
-      (log(zf(1) / z0mav) - psim(zf(1) / L) + psim(z0mav / L)) ** 2.
-      Lstart  = L - 0.001*L
-      Lend    = L + 0.001*L
-      fxdif   = ( (- zf(1) / Lstart * (log(zf(1) / z0hav) - psih(zf(1) / Lstart) + psih(z0hav / Lstart)) /&
-      (log(zf(1) / z0mav) - psim(zf(1) / Lstart) + psim(z0mav / Lstart)) ** 2.) - (-zf(1) / Lend * (log(zf(1) / z0hav) &
-      - psih(zf(1) / Lend) + psih(z0hav / Lend)) / (log(zf(1) / z0mav) - psim(zf(1) / Lend) &
-      + psim(z0mav / Lend)) ** 2.) ) / (Lstart - Lend)
-      L       = L - fx / fxdif
-      if(Rib * L < 0. .or. abs(L) == 1e5) then
-        if(Rib > 0) L = 0.01
-        if(Rib < 0) L = -0.01
-      end if
-      if(abs((L - Lold)/L) < 1e-4) exit
-      if(iter > 1000) then
-         write (*,*) 'Obukhov length calculation does not converge! (second time)'
-         write (*,*) 'L       =', L
-         write (*,*) 'oblav   =', oblav
-         write (*,*) 'Lold    =', Lold
-         write (*,*) 'Lstart  =', Lstart
-         write (*,*) 'Lend    =', Lend
-         write (*,*) 'fx      =', fx
-         write (*,*) 'fxdif   =', fxdif
-         write (*,*) 'Rib     =', Rib
-         write (*,*) 'zf(1)   =', zf(1)
-         write (*,*) 'z0hav   =', z0hav
-         call flush
-         call abort
-         !stop 'Obukhov length calculation does not converge!'
-         end if
-    end do
-
-    if (abs(L)>1e6) L = sign(1.0e6,L)
-    if(.not. lmostlocal) then
-      if(.not. lhetero) then
-        obl(:,:) = L
-      endif
-    end if
     oblav = L
 
     return
