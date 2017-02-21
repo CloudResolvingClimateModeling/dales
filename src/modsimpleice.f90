@@ -397,14 +397,15 @@ module modsimpleice
     integer :: i,j,k,jn
     integer :: n_spl      !<  sedimentation time splitting loop
     real :: dt_spl,wfallmax,vtr,vts,vtg,vtf
-
+    real :: tmp_lambdar, tmp_lambdas, tmp_lambdag
+    
     wfallmax = 9.9
     n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp))
     dt_spl = delt/real(n_spl) !fixed time step
 
     sed_qr = 0. ! reset sedimentation fluxes
 
-    do k=1,k1
+    do k=1,k1 !all these loops should go to kmax, not k1 ?
     do j=2,j1
     do i=2,i1
       qr_spl(i,j,k) = qr(i,j,k)
@@ -444,12 +445,37 @@ module modsimpleice
         do i=2,i1
           if (qr_spl(i,j,k) > qrmin) then
             ! re-evaluate lambda
-            lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-            lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-            lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
-            vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
-            vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
-            vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
+            !lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+            !lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+            !lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
+            !vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
+            !vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
+            !vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
+
+             ! what's with the 1e-6? just to avoid negative values?
+
+             !these ifs are here to avoid performing the power calculations unless they are going to be used
+            if (rsgratio(i,j,k) > 0) then
+               tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+               vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
+            else
+               vtr = 0
+            end if
+            
+            if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
+               tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+               vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
+            else
+               vts = 0
+            end if
+
+            if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
+               tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
+               vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
+            else
+               vtg = 0
+            end if
+            
             vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
             vtf=amin1(wfallmax,vtf)
             sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
