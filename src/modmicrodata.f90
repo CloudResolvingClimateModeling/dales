@@ -47,7 +47,11 @@
 
   logical :: l_lognormal = .false.    !<  log param of rain terminal velocities for rain sedim
 
-  integer :: inr = 1, iqr=2
+  integer :: inr = 2, iqr = 1
+  ! iqr is used in simpleice, bulkmicro
+  ! inr is used in bulkmicro
+  ! simpleice needs nsv = 1
+  ! bulkmicro needs nsv = 2
 
   real, parameter ::  D0_kk = 50e-6     & !<  diameter sep. cloud and prec. in KK00 scheme
                      ,qcmin = 1.0e-7     & !<  Cloud specific mixing ratio treshold for calculations
