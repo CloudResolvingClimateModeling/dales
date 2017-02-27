@@ -10,8 +10,11 @@
 !!  \author Steef B\"oing, TU Delft
 !!  \par Revision list
 !
+! FJ: seems the ref should be Khairoutdinov and Randall, 2003, JAS 
+!
 ! http://dx.doi.org/10.1175/1520-0469(1998)055%3C3283:TCRMOL%3E2.0.CO;2
 ! http://dx.doi.org/10.1175/JAS3810.1
+! http://dx.doi.org/10.1175/1520-0469(2003)060<0607:CRMOTA>2.0.CO;2   - 2003
 !
 !  This file is part of DALES.
 !
@@ -200,16 +203,19 @@ module modsimpleice
       do j=2,j1
       do i=2,i1
         if(qrmask(i,j,k).eqv..true.) then
-          rsgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning
+          rsgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
           sgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning
           lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
           lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
           lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
+          ! lambdas, lambdag are inf or nan if no snow/graupel present ??
+          ! no: the +1.e-6 in the denominator make them finite
+          ! no snow/graupel -> large lambda
         endif
       enddo
       enddo
       enddo
-    else
+    else ! rain, snow but no graupel
       do k=1,k1
       do j=2,j1
       do i=2,i1
@@ -218,7 +224,7 @@ module modsimpleice
           sgratio(i,j,k)=0.
           lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
           lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-          lambdag(i,j,k)=lambdas(i,j,k)
+          lambdag(i,j,k)=lambdas(i,j,k) ! FJ: probably wrong - routines below don't always check sgratio
         end if
       enddo
       enddo
@@ -369,14 +375,37 @@ module modsimpleice
         ! saturation ratios
         ssl=(qt0(i,j,k)-ql0(i,j,k))/qvsl(i,j,k)
         ssi=(qt0(i,j,k)-ql0(i,j,k))/qvsi(i,j,k)
+
+        thfun=1.e-7/(2.2*tmp0(i,j,k)/esl(i,j,k)+2.2e2/tmp0(i,j,k))  ! thermodynamic function
+
         !integration over ventilation factors and diameters, see e.g. seifert 2008
         ventr=.78*n0rr/lambdar(i,j,k)**2 + gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)*lambdar(i,j,k)**(-2.5-0.5*ddr)
-        vents=.78*n0rs/lambdas(i,j,k)**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas(i,j,k)**(-2.5-0.5*dds)
-        ventg=.78*n0rg/lambdag(i,j,k)**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag(i,j,k)**(-2.5-0.5*ddg)
-        thfun=1.e-7/(2.2*tmp0(i,j,k)/esl(i,j,k)+2.2e2/tmp0(i,j,k))  ! thermodynamic function
         evapdepr=(4.*pi/(betar*rhof(k)))*(ssl-1.)*ventr*thfun
-        evapdeps=(4.*pi/(betas*rhof(k)))*(ssi-1.)*vents*thfun
-        evapdepg=(4.*pi/(betag*rhof(k)))*(ssi-1.)*ventg*thfun
+
+
+        ! these IF:s are for optimizatin - calculate only if necessary
+        ! CHECK - they may be wrong !
+        ! what is lambdas if no snow is present?
+        !    --seems large but finite -> evapdeps contribution is small
+        
+        if (lambdas(i,j,k) /= 0) then ! snow - calculate only if snow present 
+           vents=.78*n0rs/lambdas(i,j,k)**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas(i,j,k)**(-2.5-0.5*dds)
+           evapdeps=(4.*pi/(betas*rhof(k)))*(ssi-1.)*vents*thfun
+        else
+           evapdeps = 0
+        endif
+
+        if (lambdag(i,j,k) /= 0) then ! graupel - calculate only if graupel present
+           ventg=.78*n0rg/lambdag(i,j,k)**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag(i,j,k)**(-2.5-0.5*ddg)
+           evapdepg=(4.*pi/(betag*rhof(k)))*(ssi-1.)*ventg*thfun
+        else
+           evapdepg = 0
+        endif
+
+        ! Grabowski 1998 has different coefficients here for snow
+        
+        
+        
         ! total growth by deposition and evaporation
         ! limit with qr and ql after accretion and autoconversion
         devap= max(min(evapfactor*(evapdepr+evapdeps+evapdepg),ql0(i,j,k)/delt+qrp(i,j,k)),-qr(i,j,k)/delt-qrp(i,j,k))

@@ -465,6 +465,10 @@ contains
   ! T range: 150 ... 550K - valid for the esatltab table
   ! The routine may break earlier and return a negative qsatur, at the boiling point of water.
   ! Then we print a warning and return qsatur = 1
+  !
+  ! Optimization possibility: if T > tup, don't calculate esi, qvsi, ilratio
+  ! problem: qvsi is stored in a global table sometimes - is it ever needed it T > tup
+  ! option: make a copy of this routine which only returns qsatur
   subroutine get_qsatur(T, pres, qsatur, esl, qvsl, qvsi)
     use modglobal, only : rd,rv,tup,tdn,ttab,esatltab,esatitab
     real,    intent(in)  :: T, pres
