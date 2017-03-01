@@ -94,6 +94,16 @@ module modsimpleice2
      gammadds3=lacz_gamma(3.+dds)
      gammaddg3=lacz_gamma(3.+ddg)
 
+     
+     ! Density corrected fall speed parameters, see Tomita 2008
+     ! rhobf is constant in time
+     do k=1,k1
+        ccrz(k)=ccr*(1.29/rhobf(k))**0.5
+        ccsz(k)=ccs*(1.29/rhobf(k))**0.5
+        ccgz(k)=ccg*(1.29/rhobf(k))**0.5
+     end do
+
+     
   end subroutine initsimpleice
 
 !> Cleaning up after the run
@@ -128,13 +138,6 @@ module modsimpleice2
     nr=0.
     thlpmcr=0.
     qtpmcr=0.
-
-    ! Density corrected fall speed parameters, see Tomita 2008
-    do k=1,k1
-    ccrz(k)=ccr*(1.29/rhobf(k))**0.5
-    ccsz(k)=ccs*(1.29/rhobf(k))**0.5
-    ccgz(k)=ccg*(1.29/rhobf(k))**0.5
-    end do
 
     do k=1,k1
        do j=2,j1
