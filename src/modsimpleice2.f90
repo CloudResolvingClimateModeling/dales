@@ -56,8 +56,9 @@ module modsimpleice2
 !> Initializes and allocates the arrays
   subroutine initsimpleice
     use modglobal, only : ih,i1,jh,j1,k1,lacz_gamma
-
     implicit none
+    integer:: k
+
 
     allocate (qr(2-ih:i1+ih,2-jh:j1+jh,k1)        & ! qr (total precipitation!) converted from a scalar variable
              ,qrp(2-ih:i1+ih,2-jh:j1+jh,k1)       & ! qr tendency due to microphysics only, for statistics
@@ -117,8 +118,8 @@ module modsimpleice2
 
 !> Calculates the microphysical source term.
   subroutine simpleice
-    use modglobal, only : i1,j1,k1,rdt,rk3step,timee,rlv,cp,tup,tdn
-    use modfields, only : sv0,svm,svp,qtp,thlp,ql0,exnf,rhof,tmp0,rhobf
+    use modglobal, only : i1,j1,k1,rdt,rk3step,timee,rlv,cp,tup,tdn,pi,tmelt
+    use modfields, only : sv0,svm,svp,qtp,thlp,ql0,exnf,rhof,tmp0,rhobf,qvsl,qvsi,esl
     use modsimpleicestat, only : simpleicetend
     implicit none
     integer:: i,j,k
@@ -320,7 +321,7 @@ module modsimpleice2
 
 
 
-!    if (l_rain) then
+    if (l_rain) then
 !      call simpleicetend
 !      call autoconvert
 !      call simpleicetend
