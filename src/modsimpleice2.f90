@@ -177,12 +177,12 @@ module modsimpleice2
 
              !partitioning and determination of intercept parameter
 
-             ! old scheme without graupel ?
-             !if(l_warm) then 
-             !   ilratio(i,j,k)=1.   ! cloud water vs cloud ice partitioning
-             !else
-             !   ilratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
-             !end if
+             ! old scheme without graupel ? - no this is still needed
+             if(l_warm) then 
+                ilratio(i,j,k)=1.   ! cloud water vs cloud ice partitioning
+             else
+                ilratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
+             end if
 
               if(l_warm) then !partitioning and determination of intercept parameter
                  if(qrmask(i,j,k).eqv..true.) then
