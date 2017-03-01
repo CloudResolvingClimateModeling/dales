@@ -177,62 +177,61 @@ module modsimpleice2
 
              !partitioning and determination of intercept parameter
 
-             ! old scheme without graupel ? - no this is still needed
-             if(l_warm) then 
-                ilratio(i,j,k)=1.   ! cloud water vs cloud ice partitioning
-             else
-                ilratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
-             end if
-
-              if(l_warm) then !partitioning and determination of intercept parameter
-                 if(qrmask(i,j,k).eqv..true.) then
-                    rsgratio(i,j,k)=1.   ! rain vs snow/graupel partitioning
-                    sgratio(i,j,k)=0.   ! snow versus graupel partitioning
-                    lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-                    lambdas(i,j,k)=lambdar(i,j,k) ! lambda snow
-                    lambdag(i,j,k)=lambdar(i,j,k) ! lambda graupel
-                 end if
-              elseif(l_graupel) then
-                 if(qrmask(i,j,k).eqv..true.) then
-                    rsgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
-                    sgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning
-                    lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-                    lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
-                    lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
-                    ! lambdas, lambdag are inf or nan if no snow/graupel present ??
-                    ! no: the +1.e-6 in the denominator make them finite
-                    ! no snow/graupel -> large lambda
-                 endif
-              else ! rain, snow but no graupel
-                 if(qrmask(i,j,k).eqv..true.) then
-                    rsgratio(i,j,k)=amax1(0.,amin1(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
+             if(qrmask(i,j,k).eqv..true.) then
+                if(l_warm) then !partitioning and determination of intercept parameter
+                   ilratio(i,j,k)=1.   ! cloud water vs cloud ice partitioning
+                   rsgratio(i,j,k)=1.   ! rain vs snow/graupel partitioning
+                   sgratio(i,j,k)=0.   ! snow versus graupel partitioning
+                   lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                   lambdas(i,j,k)=lambdar(i,j,k) ! lambda snow
+                   lambdag(i,j,k)=lambdar(i,j,k) ! lambda graupel
+                elseif(l_graupel) then
+                   ilratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
+                   rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
+                   sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning
+                   lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                   lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
+                   lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
+                   ! lambdas, lambdag are inf or nan if no snow/graupel present ??
+                   ! no: the +1.e-6 in the denominator make them finite
+                   ! no snow/graupel -> large lambda
+                else ! rain, snow but no graupel
+                    ilratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
+                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
                     sgratio(i,j,k)=0.
                     lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
                     lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
                     lambdag(i,j,k)=lambdas(i,j,k) ! FJ: probably wrong - routines below don't always check sgratio
                  end if
-              end if
+              endif
 
               ! Autoconvert
               if (qcmask(i,j,k).eqv..true.) then
+                 ! ql partitioning - used here and in Accrete
+                 qll=ql0(i,j,k)*ilratio(i,j,k)
+                 qli=ql0(i,j,k)-qll
+                 
                  if(l_berry.eqv..true.) then ! Berry/Hsie autoconversion
                     ! ql partitioning
-                    qll=ql0(i,j,k)*ilratio(i,j,k)
-                    qli=ql0(i,j,k)-qll
+                    ! qll=ql0(i,j,k)*ilratio(i,j,k)
+                    ! qli=ql0(i,j,k)-qll
+                    
                     ddisp=0.146-5.964e-2*alog(Nc_0/2.e9) ! Relative dispersion coefficient for Berry autoconversion
                     lwc=1.e3*rhof(k)*qll ! Liquid water content in g/kg
                     autl=1./rhof(k)*1.67e-5*lwc*lwc/(5. + .0366*Nc_0/(1.e6*ddisp*(lwc+1.e-6)))
                     tc=tmp0(i,j,k)-tmelt ! Temperature wrt melting point
-                    times=amin1(1.e3,(3.56*tc+106.7)*tc+1.e3) ! Time scale for ice autoconversion
+                    times=min(1.e3,(3.56*tc+106.7)*tc+1.e3) ! Time scale for ice autoconversion
                     auti=qli/times
                     aut = min(autl + auti,ql0(i,j,k)/delt)
                     qrp(i,j,k) = qrp(i,j,k)+aut
                     qtpmcr(i,j,k) = qtpmcr(i,j,k)-aut
                     thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*aut
                  else  ! Lin/Kessler autoconversion as in Khairoutdinov and Randall, 2006
+
                     ! ql partitioning
-                    qll=ql0(i,j,k)*ilratio(i,j,k)
-                    qli=ql0(i,j,k)-qll
+                    ! qll=ql0(i,j,k)*ilratio(i,j,k)
+                    ! qli=ql0(i,j,k)-qll
+                    
                     autl=max(0.,timekessl*(qll-qll0))
                     tc=tmp0(i,j,k)-tmelt
                     auti=max(0.,betakessi*exp(0.025*tc)*(qli-qli0))
@@ -248,9 +247,10 @@ module modsimpleice2
               
               if (qrmask(i,j,k).eqv..true.) then
                  if (qcmask(i,j,k).eqv..true.) then ! apply mask
-                    ! ql partitioning
-                    qll=ql0(i,j,k)*ilratio(i,j,k)
-                    qli=ql0(i,j,k)-qll
+                    ! ql partitioning - calculated in Autoconvert
+                    !qll=ql0(i,j,k)*ilratio(i,j,k)
+                    !qli=ql0(i,j,k)-qll
+
                     ! qr partitioning
                     qrr=qr(i,j,k)*rsgratio(i,j,k)
                     qrs=qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))
@@ -401,7 +401,7 @@ module modsimpleice2
           lwc=1.e3*rhof(k)*qll ! Liquid water content in g/kg
           autl=1./rhof(k)*1.67e-5*lwc*lwc/(5. + .0366*Nc_0/(1.e6*ddisp*(lwc+1.e-6)))
           tc=tmp0(i,j,k)-tmelt ! Temperature wrt melting point
-          times=amin1(1.e3,(3.56*tc+106.7)*tc+1.e3) ! Time scale for ice autoconversion
+          times=min(1.e3,(3.56*tc+106.7)*tc+1.e3) ! Time scale for ice autoconversion
           auti=qli/times
           aut = min(autl + auti,ql0(i,j,k)/delt)
           qrp(i,j,k) = qrp(i,j,k)+aut
@@ -581,7 +581,7 @@ module modsimpleice2
         vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
         vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
         vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
-        vtf = amin1(wfallmax,vtf)
+        vtf = min(wfallmax,vtf)
         precep(i,j,k) = vtf*qr_spl(i,j,k)
         sed_qr(i,j,k) = precep(i,j,k)*rhobf(k) ! convert to flux
       else
@@ -644,7 +644,7 @@ module modsimpleice2
             end if
             
             vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
-            vtf=amin1(wfallmax,vtf)
+            vtf=min(wfallmax,vtf)
             sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
           else
             sed_qr(i,j,k) = 0.
