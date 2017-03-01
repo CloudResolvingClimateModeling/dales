@@ -96,13 +96,13 @@ module modsimpleice2
      gammaddg3=lacz_gamma(3.+ddg)
 
      
-     ! Density corrected fall speed parameters, see Tomita 2008
-     ! rhobf is constant in time
-     do k=1,k1
-        ccrz(k)=ccr*(1.29/rhobf(k))**0.5
-        ccsz(k)=ccs*(1.29/rhobf(k))**0.5
-        ccgz(k)=ccg*(1.29/rhobf(k))**0.5
-     end do
+!     ! Density corrected fall speed parameters, see Tomita 2008
+!     ! rhobf is constant in time
+!     do k=1,k1
+!        ccrz(k)=ccr*(1.29/rhobf(k))**0.5
+!        ccsz(k)=ccs*(1.29/rhobf(k))**0.5
+!        ccgz(k)=ccg*(1.29/rhobf(k))**0.5
+!     end do
 
      
   end subroutine initsimpleice
@@ -129,7 +129,15 @@ module modsimpleice2
     real :: ssl,ssi,ventr,vents,ventg,thfun,evapdepr,evapdeps,evapdepg,devap  !evapdep
     
     delt = rdt/ (4. - dble(rk3step))
-
+    
+     ! Density corrected fall speed parameters, see Tomita 2008
+     ! rhobf is constant in time
+     do k=1,k1
+        ccrz(k)=ccr*(1.29/rhobf(k))**0.5
+        ccsz(k)=ccs*(1.29/rhobf(k))**0.5
+        ccgz(k)=ccg*(1.29/rhobf(k))**0.5
+     end do
+   
     ! used to check on negative qr and nr
     qrsum=0.
     qrsmall=0.
