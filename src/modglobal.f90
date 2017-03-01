@@ -347,7 +347,8 @@ contains
     !where (iadv_sv<0)  iadv_sv  = iadv_mom
     do n = 1, nsv
       if(iadv_sv(n) < 0) then
-        iadv_sv(n) = iadv_mom
+         iadv_sv(n) = iadv_mom
+         write (*,*) 'Warning: iadv_sv(', n, ') not set - defaulting to',  iadv_mom
       end if
     end do
 
