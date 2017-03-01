@@ -105,7 +105,7 @@ contains
   subroutine microsources
    use moduser,      only : micro_user
    use modbulkmicro, only : bulkmicro
-   use modsimpleice, only : simpleice
+   use modsimpleice2, only : simpleice
 !     use modbinmicro,  only : binmicrosources
     implicit none
 
@@ -127,7 +127,7 @@ contains
 
   subroutine exitmicrophysics
     use modbulkmicro, only : exitbulkmicro
-    use modsimpleice, only : exitsimpleice
+    use modsimpleice2, only : exitsimpleice
  !     use modbinmicro,  only : exitbinmicro
     implicit none
 
