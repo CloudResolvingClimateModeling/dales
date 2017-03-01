@@ -250,8 +250,8 @@ contains
     call initsurface
     call initsubgrid
     call initpois
-    call initmicrophysics
     call readinitfiles ! moved to obtain the correct btime for the timedependent forcings in case of a warmstart
+    call initmicrophysics ! moved after readinitfiles, since rhobf is needed
     call inittimedep !depends on modglobal,modfields, modmpi, modsurf, modradiation
 
     call checkinitvalues
