@@ -164,7 +164,7 @@ module modsimpleice2
     thlpmcr=0.
     qtpmcr=0.
 
-    do k=1,k1
+    do k=1,kmax
        do j=2,j1
           do i=2,i1
           
@@ -516,6 +516,14 @@ module modsimpleice2
 !    endif
   end subroutine simpleice
 
+
+
+
+
+
+
+
+  
   subroutine autoconvert
     use modglobal, only : i1,j1,k1,rlv,cp,tmelt
     use modfields, only : ql0,exnf,rhof,tmp0
