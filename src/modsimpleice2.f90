@@ -127,8 +127,20 @@ module modsimpleice2
     real :: qll,qli,ddisp,lwc,autl,tc,times,auti,aut ! autoconvert
     real :: qrr,qrs,qrg, gaccrl,gaccsl,gaccgl,gaccri,gaccsi,gaccgi,accr,accs,accg,acc  !accrete
     real :: ssl,ssi,ventr,vents,ventg,thfun,evapdepr,evapdeps,evapdepg,devap  !evapdep
-    
+
+    real :: dt_spl,wfallmax,vtr,vts,vtg,vtf ! precipitation
+    real :: tmp_lambdar, tmp_lambdas, tmp_lambdag
+
     delt = rdt/ (4. - dble(rk3step))
+    
+    wfallmax = 9.9 ! cap for fall velocity
+    n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp)) ! number of sub-timesteps for precipitation 
+    dt_spl = delt/real(n_spl)                              ! fixed time step for precipitation sub-stepping
+
+    sed_qr = 0. ! reset sedimentation fluxes
+
+    
+
     
      ! Density corrected fall speed parameters, see Tomita 2008
      ! rhobf is constant in time
@@ -175,18 +187,31 @@ module modsimpleice2
                 endif
              endif
 
+
+             ! logic
+             !
+             ! qrmask: true if cell contains rain. qr > threshold
+             ! rsgratio, sgratio, lambda* calculated
+             !
+             ! qcmask: true if cell contains cloud - condensed water - ql > threshold
+             ! ilratio, qll, qli calculated
+             !
+             ! qr, qrp  - rain, tendency
+             ! qtpmcr   - qt tendency from microphysics
+             ! thlpmcr  - thl tendency from microphysics
+             
+
+             
              !partitioning and determination of intercept parameter
 
              if(qrmask(i,j,k).eqv..true.) then
                 if(l_warm) then !partitioning and determination of intercept parameter
-                   ilratio(i,j,k)=1.   ! cloud water vs cloud ice partitioning
                    rsgratio(i,j,k)=1.   ! rain vs snow/graupel partitioning
                    sgratio(i,j,k)=0.   ! snow versus graupel partitioning
                    lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
                    lambdas(i,j,k)=lambdar(i,j,k) ! lambda snow
                    lambdag(i,j,k)=lambdar(i,j,k) ! lambda graupel
                 elseif(l_graupel) then
-                   ilratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
                    sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning
                    lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
@@ -196,17 +221,22 @@ module modsimpleice2
                    ! no: the +1.e-6 in the denominator make them finite
                    ! no snow/graupel -> large lambda
                 else ! rain, snow but no graupel
-                    ilratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
-                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
-                    sgratio(i,j,k)=0.
-                    lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-                    lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-                    lambdag(i,j,k)=lambdas(i,j,k) ! FJ: probably wrong - routines below don't always check sgratio
+                   rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
+                   sgratio(i,j,k)=0.
+                   lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                   lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+                   lambdag(i,j,k)=lambdas(i,j,k) ! FJ: probably wrong - routines below don't always check sgratio
                  end if
               endif
 
               ! Autoconvert
               if (qcmask(i,j,k).eqv..true.) then
+                 if(l_warm) then 
+                    ilratio(i,j,k)=1.   
+                 else
+                    ilratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdn)/(tup-tdn)))! cloud water vs cloud ice partitioning
+                 endif
+                 
                  ! ql partitioning - used here and in Accrete
                  qll=ql0(i,j,k)*ilratio(i,j,k)
                  qli=ql0(i,j,k)-qll
@@ -262,8 +292,8 @@ module modsimpleice2
                     gaccri=pi/4.*ccrz(k)*ceffri*rhof(k)*qli*qrr*lambdar(i,j,k)**(bbr-2.-ddr)*gammaddr3/(aar*gamb1r)
                     gaccsi=pi/4.*ccsz(k)*ceffsi*rhof(k)*qli*qrs*lambdas(i,j,k)**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
                     gaccgi=pi/4.*ccgz(k)*ceffgi*rhof(k)*qli*qrg*lambdag(i,j,k)**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
-                    accr=(gaccrl+gaccri)*qrr/(qrr+1.e-9)
-                    accs=(gaccsl+gaccsi)*qrs/(qrs+1.e-9)
+                    accr=(gaccrl+gaccri)*qrr/(qrr+1.e-9) 
+                    accs=(gaccsl+gaccsi)*qrs/(qrs+1.e-9)  ! why this division? makes accr small if q << 1e-9
                     accg=(gaccgl+gaccgi)*qrg/(qrg+1.e-9)
                     acc= min(accr+accs+accg,ql0(i,j,k)/delt)  ! total growth by accretion
                     qrp(i,j,k) = qrp(i,j,k)+acc
@@ -292,6 +322,8 @@ module modsimpleice2
                  qrp(i,j,k) = qrp(i,j,k)+devap
                  qtpmcr(i,j,k) = qtpmcr(i,j,k)-devap
                  thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*devap
+                 
+                  ! ! Grabowski 1998 has different coefficients here for snow
                  
                  
                  ! ! saturation ratios
@@ -324,7 +356,7 @@ module modsimpleice2
                  !    evapdepg = 0
                  ! endif
 
-                 ! ! Grabowski 1998 has different coefficients here for snow
+                
         
                  ! ! total growth by deposition and evaporation
                  ! ! limit with qr and ql after accretion and autoconversion
@@ -572,6 +604,10 @@ module modsimpleice2
 
     sed_qr = 0. ! reset sedimentation fluxes
 
+
+    ! merge this loop with the one below for regularity?
+    ! cost: must calculate lambda once more
+    !       separate assignment to qr_spl
     do k=1,k1 !all these loops should go to kmax, not k1 ?
     do j=2,j1
     do i=2,i1
@@ -653,7 +689,12 @@ module modsimpleice2
         enddo
         enddo
 
-        do k=1,kmax
+        ! merge this loop with the one above - if looping from high k to low, so that sed_qr(k+1) has already been updated
+        ! gains: only one loop
+        !        need to calculate only where there is something to advect
+        ! 
+        ! only need sed_qr from the previous layer, not a full block
+        do k=1,kmax 
         do j=2,j1
         do i=2,i1
           qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
