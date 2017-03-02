@@ -164,7 +164,7 @@ module modsimpleice2
     thlpmcr=0.
     qtpmcr=0.
 
-    do k=1,kmax
+    do k=kmax,1,-1 ! reverse order for upwind scheme at the end
        do j=2,j1
           do i=2,i1
           
@@ -387,7 +387,10 @@ module modsimpleice2
                  sed_qr(i,j,k) = 0.
               end if
 
-              
+              !  advect precipitation using upwind scheme
+              ! note this relies on loop order - k decreasing
+
+              qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
           enddo
        enddo
     enddo
@@ -397,13 +400,14 @@ module modsimpleice2
     
 
     !  advect precipitation using upwind scheme
-    do k=1,kmax
-    do j=2,j1
-    do i=2,i1
-      qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-    enddo
-    enddo
-    enddo
+!    do k=1,kmax
+!    do j=2,j1
+!    do i=2,i1
+!      qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
+!    enddo
+!    enddo
+!    enddo
+! merged into loop above - OK when counting don
     
     write(*,*) 'n_spl', n_spl
     ! begin time splitting loop
