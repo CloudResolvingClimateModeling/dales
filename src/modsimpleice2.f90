@@ -476,14 +476,14 @@ module modsimpleice2
     ENDIF
 
     ! no thl and qt tendencies build in, implying no heat transfer between precipitation and air
-    do k=1,kmax
-    do j=2,j1
-    do i=2,i1
-      qrp(i,j,k)= qrp(i,j,k) + (qr_spl(i,j,k) - qr(i,j,k))/delt
-    enddo
-    enddo
-    enddo
-
+!    do k=1,kmax
+!    do j=2,j1
+!    do i=2,i1
+!      qrp(i,j,k)= qrp(i,j,k) + (qr_spl(i,j,k) - qr(i,j,k))/delt
+!    enddo
+!    enddo
+!    enddo
+! merge with loop below
 
 
     
@@ -492,22 +492,10 @@ module modsimpleice2
     end if
 
 
-
-
-    if (l_rain) then
-!      call simpleicetend
-!      call autoconvert
-!      call simpleicetend
-!      call accrete
-!      call simpleicetend
-!      call evapdep
-!      call simpleicetend
-!      call precipitate
-    endif
-
     do k=1,k1
     do j=2,j1
     do i=2,i1
+      qrp(i,j,k)= qrp(i,j,k) + (qr_spl(i,j,k) - qr(i,j,k))/delt
       qrtest=svm(i,j,k,iqr)+(svp(i,j,k,iqr)+qrp(i,j,k))*delt
       if (qrtest .lt. qrmin) then ! correction, after Jerome's implementation in Gales
         qtp(i,j,k) = qtp(i,j,k) + qtpmcr(i,j,k) + svm(i,j,k,iqr)/delt + svp(i,j,k,iqr) + qrp(i,j,k)
