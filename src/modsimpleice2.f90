@@ -416,7 +416,7 @@ module modsimpleice2
 
         ! reset fluxes at each step of loop
         sed_qr = 0.
-        do k=1,k1
+        do k=kmax,1,-1
         do j=2,j1
         do i=2,i1
           if (qr_spl(i,j,k) > qrmin) then
@@ -457,7 +457,11 @@ module modsimpleice2
             sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
           else
             sed_qr(i,j,k) = 0.
-          endif
+         endif
+
+         ! update
+         ! note k must decrease in the loop
+         qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
         enddo
         enddo
         enddo
@@ -467,13 +471,13 @@ module modsimpleice2
         !        need to calculate only where there is something to advect
         ! 
         ! only need sed_qr from the previous layer, not a full block
-        do k=1,kmax 
-        do j=2,j1
-        do i=2,i1
-          qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-        enddo
-        enddo
-        enddo
+        !do k=1,kmax 
+       ! do j=2,j1
+       ! do i=2,i1
+       !   qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
+        !enddo
+       ! enddo
+       ! enddo
 
       ! end time splitting loop and if n>1
       ENDDO
