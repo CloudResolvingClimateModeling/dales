@@ -128,16 +128,18 @@ module modsimpleice2
     real :: qrr,qrs,qrg, gaccrl,gaccsl,gaccgl,gaccri,gaccsi,gaccgi,accr,accs,accg,acc  !accrete
     real :: ssl,ssi,ventr,vents,ventg,thfun,evapdepr,evapdeps,evapdepg,devap  !evapdep
 
-    real :: dt_spl,wfallmax,vtr,vts,vtg,vtf ! precipitation
-    real :: tmp_lambdar, tmp_lambdas, tmp_lambdag
-
-    delt = rdt/ (4. - dble(rk3step))
+    !real :: dt_spl,wfallmax,vtr,vts,vtg,vtf ! precipitation
+   ! real :: tmp_lambdar, tmp_lambdas, tmp_lambdag
+   ! integer :: jn
+   ! integer :: n_spl      !<  sedimentation time splitting loop
     
-    wfallmax = 9.9 ! cap for fall velocity
-    n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp)) ! number of sub-timesteps for precipitation 
-    dt_spl = delt/real(n_spl)                              ! fixed time step for precipitation sub-stepping
+    delt = rdt/ (4. - dble(rk3step))
+   ! 
+   ! wfallmax = 9.9 ! cap for fall velocity
+   ! n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp)) ! number of sub-timesteps for precipitation 
+   ! dt_spl = delt/real(n_spl)                              ! fixed time step for precipitation sub-stepping!
 
-    sed_qr = 0. ! reset sedimentation fluxes
+    !sed_qr = 0. ! reset sedimentation fluxes
 
     
 
