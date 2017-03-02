@@ -133,7 +133,8 @@ module modsimpleice2
     integer :: jn
     integer :: n_spl      !<  sedimentation time splitting loop
 
-    real ilratio_,rsgratio_,sgratio_,lambdar_,lambdas_,lambdag_,qrmask_, qcmask_ ! local values instead of global arrays
+    real :: ilratio_,rsgratio_,sgratio_,lambdar_,lambdas_,lambdag_ ! local values instead of global arrays
+    logical :: qrmask_, qcmask_
     
     delt = rdt/ (4. - dble(rk3step))
     
