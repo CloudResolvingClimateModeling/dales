@@ -228,16 +228,16 @@ module modsimpleice2
                 elseif(l_graupel) then
                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
                    sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
-                   if (rsgratio > 0) then                                                                               ! sg = 0 -> only snow
-                      rain_present = 1
+                   if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
+                      rain_present = .true.
                       lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
                    endif
-                   if (rsgratio < 1) then
-                      if (sgratio > 0) then
+                   if (rsgratio(i,j,k) < 1) then
+                      if (sgratio(i,j,k) > 0) then
                          graupel_present = .true.
                          lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
                       endif                      
-                      if (sgratio < 1) then
+                      if (sgratio(i,j,k) < 1) then
                          snow_present = .true.
                          lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
                       endif
@@ -249,11 +249,11 @@ module modsimpleice2
                 else ! rain, snow but no graupel
                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
                    sgratio(i,j,k)=0.
-                   if (rsgratio > 0) then 
+                   if (rsgratio(i,j,k) > 0) then 
                       rain_present = .true.
                       lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
                    endif
-                   if (rsgratio < 1) then
+                   if (rsgratio(i,j,k) < 1) then
                          snow_present = .true.
                          lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
                    endif
@@ -392,15 +392,15 @@ module modsimpleice2
                  vtf = 0
                  if (rain_present) then
                     vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar_**ddr)  ! terminal velocity rain
-                    vtf += rsgratio(i,j,k)*vtr
+                    vtf = vtf + rsgratio(i,j,k)*vtr
                  endif                
                  if (snow_present) then
                     vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas_**dds)  ! terminal velocity snow
-                    vtf += (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts
+                    vtf = vtf + (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts
                  endif                 
                  if (graupel_present) then
                     vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag_**ddg)  ! terminal velocity graupel
-                    vtf += (1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg
+                    vtf = vtf + (1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg
                  endif
                  ! vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
                  vtf = min(wfallmax,vtf)
