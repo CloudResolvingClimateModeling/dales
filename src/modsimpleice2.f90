@@ -228,20 +228,20 @@ module modsimpleice2
                 elseif(l_graupel) then
                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
                    sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
-                   if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
+                   !if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
                       rain_present = .true.
                       lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-                   endif
-                   if (rsgratio(i,j,k) < 1) then
-                      if (sgratio(i,j,k) > 0) then
+                   !endif
+                  ! if (rsgratio(i,j,k) < 1) then
+                  !    if (sgratio(i,j,k) > 0) then
                          graupel_present = .true.
                          lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
-                      endif                      
-                      if (sgratio(i,j,k) < 1) then
+                  !    endif                      
+                  !    if (sgratio(i,j,k) < 1) then
                          snow_present = .true.
                          lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
-                      endif
-                   endif
+                  !    endif
+                  ! endif
 
                    ! lambdas, lambdag are inf or nan if no snow/graupel present ??
                    ! no: the +1.e-6 in the denominator make them finite
@@ -260,7 +260,11 @@ module modsimpleice2
                    ! lambdag_=lambdas_ ! FJ: probably wrong - routines below don't always check sgratio                                         
                  end if
               endif
-
+              
+              write(*,*) i,j,k
+              write(*,*) 'rain:', rain_present, 'snow:', snow_present, 'graupel:', graupel_present
+              write(*,*) 'lambdar:', lambdar_,  'lambdas:', lambdas_,  'lambdag:', lambdag_, 
+              
               ! Autoconvert
               if (qcmask_.eqv..true.) then
                  if(l_warm) then 
@@ -404,6 +408,8 @@ module modsimpleice2
                  endif
                  ! vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
                  vtf = min(wfallmax,vtf)
+                 write(*,*) 'vtf', vtf
+                 
                  precep(i,j,k) = vtf*qr_spl(i,j,k)
                  sed_qr(i,j,k) = precep(i,j,k)*rhobf(k) ! convert to flux
               else
