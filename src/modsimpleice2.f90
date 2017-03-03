@@ -263,7 +263,7 @@ module modsimpleice2
               
               write(*,*) i,j,k
               write(*,*) 'rain:', rain_present, 'snow:', snow_present, 'graupel:', graupel_present
-              write(*,*) 'lambdar:', lambdar_,  'lambdas:', lambdas_,  'lambdag:', lambdag_, 
+              write(*,*) 'lambdar:', lambdar_,  'lambdas:', lambdas_,  'lambdag:', lambdag_
               
               ! Autoconvert
               if (qcmask_.eqv..true.) then
