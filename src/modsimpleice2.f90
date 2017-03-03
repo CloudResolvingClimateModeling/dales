@@ -222,26 +222,26 @@ module modsimpleice2
                    rain_present = .true.
                    
                    sgratio(i,j,k)=0.   ! snow versus graupel partitioning
-                   lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                   lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                    !lambdas_=lambdar_ ! lambda snow    ! probably not right but they will not be used
                    !lambdag_=lambdar_ ! lambda graupel
-                elseif(l_graupel) then
+                elseif(l_graupel) then                  
                    rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
                    sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
-                   !if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
+                   if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
                       rain_present = .true.
-                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-                   !endif
-                  ! if (rsgratio(i,j,k) < 1) then
-                  !    if (sgratio(i,j,k) > 0) then
+                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                   endif
+                   if (rsgratio(i,j,k) < 1) then
+                      if (sgratio(i,j,k) > 0) then
                          graupel_present = .true.
-                         lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! graupel
-                  !    endif                      
-                  !    if (sgratio(i,j,k) < 1) then
+                         lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! graupel
+                      endif                      
+                      if (sgratio(i,j,k) < 1) then
                          snow_present = .true.
-                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! snow
-                  !    endif
-                  ! endif
+                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! snow
+                      endif
+                   endif
 
                    ! lambdas, lambdag are inf or nan if no snow/graupel present ??
                    ! no: the +1.e-6 in the denominator make them finite
@@ -251,19 +251,23 @@ module modsimpleice2
                    sgratio(i,j,k)=0.
                    if (rsgratio(i,j,k) > 0) then 
                       rain_present = .true.
-                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                    endif
                    if (rsgratio(i,j,k) < 1) then
                          snow_present = .true.
-                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
                    endif
                    ! lambdag_=lambdas_ ! FJ: probably wrong - routines below don't always check sgratio                                         
-                 end if
+                end if
+                
+                !write(*,*) i,j,k
+                !write(*,*) 'qr:', qr(i,j,k)
+                !write(*,*) 'rain:', rain_present, 'snow:', snow_present, 'graupel:', graupel_present
+                !write(*,*) 'lambdar:', lambdar_,  'lambdas:', lambdas_,  'lambdag:', lambdag_
+
               endif
               
-              write(*,*) i,j,k
-              write(*,*) 'rain:', rain_present, 'snow:', snow_present, 'graupel:', graupel_present
-              write(*,*) 'lambdar:', lambdar_,  'lambdas:', lambdas_,  'lambdag:', lambdag_
+              
               
               ! Autoconvert
               if (qcmask_.eqv..true.) then
@@ -329,19 +333,19 @@ module modsimpleice2
                     if (rain_present) then
                        gaccrl=pi/4.*ccrz(k)*ceffrl*rhof(k)*qll*qrr*lambdar_**(bbr-2.-ddr)*gammaddr3/(aar*gamb1r)
                        gaccri=pi/4.*ccrz(k)*ceffri*rhof(k)*qli*qrr*lambdar_**(bbr-2.-ddr)*gammaddr3/(aar*gamb1r)
-                       accr=(gaccrl+gaccri)*qrr/(qrr+1.e-9)
+                       accr=(gaccrl+gaccri) !*qrr/(qrr+1.e-9)
                     endif
 
                     if (snow_present) then
                        gaccsl=pi/4.*ccsz(k)*ceffsl*rhof(k)*qll*qrs*lambdas_**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
                        gaccsi=pi/4.*ccsz(k)*ceffsi*rhof(k)*qli*qrs*lambdas_**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
-                       accs=(gaccsl+gaccsi)*qrs/(qrs+1.e-9)  ! why this division? makes accr small if qr* << 1e-9
+                       accs=(gaccsl+gaccsi) !*qrs/(qrs+1.e-9)  ! why this division? makes accr small if qr* << 1e-9
                     endif
 
                     if (graupel_present) then
                        gaccgl=pi/4.*ccgz(k)*ceffgl*rhof(k)*qll*qrg*lambdag_**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
                        gaccgi=pi/4.*ccgz(k)*ceffgi*rhof(k)*qli*qrg*lambdag_**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
-                       accg=(gaccgl+gaccgi)*qrg/(qrg+1.e-9)
+                       accg=(gaccgl+gaccgi) !*qrg/(qrg+1.e-9)
                     endif
                     
                     acc= min(accr+accs+accg,ql0(i,j,k)/delt)  ! total growth by accretion
@@ -462,21 +466,21 @@ module modsimpleice2
 
              !these ifs are here to avoid performing the power calculations unless they are going to be used
             if (rsgratio(i,j,k) > 0) then
-               tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+               tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
             else
                vtr = 0
             end if
             
             if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
-               tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+               tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
                vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
             else
                vts = 0
             end if
 
             if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
-               tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
+               tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! lambda graupel
                vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
             else
                vtg = 0
