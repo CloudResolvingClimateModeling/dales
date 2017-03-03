@@ -454,75 +454,101 @@ module modsimpleice2
     
     ! begin time splitting loop
     IF (n_spl > 1 .and. any_qr) THEN
-      DO jn = 2 , n_spl
+       DO jn = 2 , n_spl
 
-        ! reset fluxes at each step of loop
-        sed_qr = 0.
-        do k=kmax,1,-1
-        do j=2,j1
-        do i=2,i1
-          if (qr_spl(i,j,k) > qrmin) then
-            ! re-evaluate lambda
-            !lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-            !lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-            !lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
-            !vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
-            !vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
-            !vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
+          ! reset fluxes at each step of loop
+          sed_qr = 0. ! not needed !?
 
-             ! what's with the 1e-6? just to avoid negative values?
+          if (any_snow_graupel) then 
+             do k=kmax,1,-1
+                do j=2,j1
+                   do i=2,i1
+                      if (qr_spl(i,j,k) > qrmin) then
+                         ! re-evaluate lambda
+                         !lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
+                         !lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
+                         !lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
+                         !vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
+                         !vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
+                         !vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
 
-             !these ifs are here to avoid performing the power calculations unless they are going to be used
-            if (rsgratio(i,j,k) > 0) then
-               tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
-               vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
-            else
-               vtr = 0
-            end if
-            
-            if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
-               tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
-               vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
-            else
-               vts = 0
-            end if
+                         ! what's with the 1e-6? just to avoid negative values?
 
-            if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
-               tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! lambda graupel
-               vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
-            else
-               vtg = 0
-            end if
-            
-            vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
-            vtf=min(wfallmax,vtf)
-            sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
-          else
-            sed_qr(i,j,k) = 0.
-         endif
+                         !these ifs are here to avoid performing the power calculations unless they are going to be used
+                         if (rsgratio(i,j,k) > 0) then
+                            tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                            vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
+                         else
+                            vtr = 0
+                         end if
 
-         ! update
-         ! note k must decrease in the loop
-         qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-        enddo
-        enddo
-        enddo
+                         if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
+                            tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
+                            vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
+                         else
+                            vts = 0
+                         end if
 
-        ! merge this loop with the one above - if looping from high k to low, so that sed_qr(k+1) has already been updated
-        ! gains: only one loop
-        !        need to calculate only where there is something to advect
-        ! 
-        ! only need sed_qr from the previous layer, not a full block
-        !do k=1,kmax 
-       ! do j=2,j1
-       ! do i=2,i1
-       !   qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-        !enddo
-       ! enddo
-       ! enddo
+                         if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
+                            tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! lambda graupel
+                            vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
+                         else
+                            vtg = 0
+                         end if
 
-      ! end time splitting loop and if n>1
-      ENDDO
+                         vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
+                         vtf=min(wfallmax,vtf)
+                         sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
+                      else
+                         sed_qr(i,j,k) = 0.
+                      endif
+
+                      ! update
+                      ! note k must decrease in the loop
+                      qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
+                   enddo
+                enddo
+             enddo
+
+          else ! alternative loops when there is only rain
+             do k=kmax,1,-1
+                do j=2,j1
+                   do i=2,i1
+                      if (qr_spl(i,j,k) > qrmin) then
+                         tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                         vtf=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
+
+                         vtf=min(wfallmax,vtf)
+                         sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
+                      else
+                         sed_qr(i,j,k) = 0.
+                      endif
+
+                      ! update
+                      ! note k must decrease in the loop
+                      qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
+                   enddo
+                enddo
+             enddo
+          endif
+
+
+
+          ! merge this loop with the one above - if looping from high k to low, so that sed_qr(k+1) has already been updated
+          ! gains: only one loop
+          !        need to calculate only where there is something to advect
+          ! 
+          ! only need sed_qr from the previous layer, not a full block
+          !do k=1,kmax 
+          ! do j=2,j1
+          ! do i=2,i1
+          !   qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
+          !enddo
+          ! enddo
+          ! enddo
+
+          ! end time splitting loop and if n>1
+       ENDDO
     ENDIF
 
     ! no thl and qt tendencies build in, implying no heat transfer between precipitation and air
