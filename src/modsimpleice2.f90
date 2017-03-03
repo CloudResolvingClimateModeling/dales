@@ -412,7 +412,7 @@ module modsimpleice2
                  endif
                  ! vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
                  vtf = min(wfallmax,vtf)
-                 write(*,*) 'vtf', vtf
+                 ! write(*,*) 'vtf', vtf
                  
                  precep(i,j,k) = vtf*qr_spl(i,j,k)
                  sed_qr(i,j,k) = precep(i,j,k)*rhobf(k) ! convert to flux
