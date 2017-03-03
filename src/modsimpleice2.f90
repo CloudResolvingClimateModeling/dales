@@ -137,7 +137,8 @@ module modsimpleice2
 
     real :: ilratio_,rsgratio_,sgratio_,lambdar_,lambdas_,lambdag_ ! local values instead of global arrays
     logical :: qrmask_, qcmask_
-    logical :: rain_present, snow_present, graupel_present
+    logical :: rain_present, snow_present, graupel_present   ! logicals for presence of different forms of water in the current cell
+    logical :: any_qr, any_snow_graupel                      ! logicals for precense of any precipitation, and for presense of snow/graupel in the whole system
     
     delt = rdt/ (4. - dble(rk3step))
     
@@ -169,6 +170,9 @@ module modsimpleice2
     thlpmcr=0.
     qtpmcr=0.
 
+    any_qr = .false.
+    any_snow_graupel = .false.
+    
     do k=kmax,1,-1 ! reverse order for upwind scheme at the end
        do j=2,j1
           do i=2,i1
@@ -177,7 +181,7 @@ module modsimpleice2
              graupel_present = .false.
              
              ! initialise qr
-             qr(i,j,k)= sv0(i,j,k,iqr)
+             qr(i,j,k)= sv0(i,j,k,iqr)             
              ! initialise qc mask
              if (ql0(i,j,k) > qcmin) then
                 qcmask_ = .true.
@@ -195,7 +199,8 @@ module modsimpleice2
                       qr(i,j,k)=0.
                    end if
                 else
-                   qrmask_=.true.
+                   qrmask_=.true.  ! this cell
+                   any_qr = .true. ! whole system
                 endif
              endif
 
@@ -233,6 +238,7 @@ module modsimpleice2
                       lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                    endif
                    if (rsgratio(i,j,k) < 1) then
+                      any_snow_graupel = .true.     ! whole system                                               
                       if (sgratio(i,j,k) > 0) then
                          graupel_present = .true.
                          lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! graupel
@@ -340,7 +346,7 @@ module modsimpleice2
                        gaccsl=pi/4.*ccsz(k)*ceffsl*rhof(k)*qll*qrs*lambdas_**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
                        gaccsi=pi/4.*ccsz(k)*ceffsi*rhof(k)*qli*qrs*lambdas_**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
                        accs=(gaccsl+gaccsi) !*qrs/(qrs+1.e-9)  ! why this division? makes accr small if qr* << 1e-9
-                    endif
+                    endif                                     ! disable accretion if no snow present - now done with if.
 
                     if (graupel_present) then
                        gaccgl=pi/4.*ccgz(k)*ceffgl*rhof(k)*qll*qrg*lambdag_**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
@@ -412,7 +418,7 @@ module modsimpleice2
                  endif
                  ! vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
                  vtf = min(wfallmax,vtf)
-                 ! write(*,*) 'vtf', vtf
+                 !write(*,*) 'vtf', vtf
                  
                  precep(i,j,k) = vtf*qr_spl(i,j,k)
                  sed_qr(i,j,k) = precep(i,j,k)*rhobf(k) ! convert to flux
@@ -442,10 +448,12 @@ module modsimpleice2
 !    enddo
 !    enddo
 ! merged into loop above - OK when counting don
-    
+    write (*,*) 'any_qr:', any_qr
+    write (*,*) 'any_snow_graupel:', any_snow_graupel
     write(*,*) 'n_spl', n_spl
+    
     ! begin time splitting loop
-    IF (n_spl > 1) THEN
+    IF (n_spl > 1 .and. any_qr) THEN
       DO jn = 2 , n_spl
 
         ! reset fluxes at each step of loop
