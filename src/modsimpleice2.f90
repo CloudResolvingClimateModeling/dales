@@ -260,8 +260,9 @@ module modsimpleice2
                       lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                    endif
                    if (rsgratio(i,j,k) < 1) then
-                         snow_present = .true.
-                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
+                      snow_present = .true.
+                      any_snow_graupel = .true.     ! whole system
+                      lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
                    endif
                    ! lambdag_=lambdas_ ! FJ: probably wrong - routines below don't always check sgratio                                         
                 end if
