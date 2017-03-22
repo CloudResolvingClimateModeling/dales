@@ -146,7 +146,8 @@ module modsimpleice2
     n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp)) ! number of sub-timesteps for precipitation 
     dt_spl = delt/real(n_spl)                              ! fixed time step for precipitation sub-stepping!
     
-    sed_qr = 0. ! reset sedimentation fluxes
+    ! sed_qr = 0. ! reset sedimentation fluxes
+    sed_qr(:,:,kmax+1) = 0 ! initialize ghost cells, other cells are initialized before use
 
     
     
@@ -458,8 +459,8 @@ module modsimpleice2
        DO jn = 2 , n_spl
 
           ! reset fluxes at each step of loop
-          sed_qr = 0. ! not needed !?
-
+          ! sed_qr = 0. ! not needed !?
+          
           if (any_snow_graupel) then 
              do k=kmax,1,-1
                 do j=2,j1
