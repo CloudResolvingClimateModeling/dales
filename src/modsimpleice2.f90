@@ -515,8 +515,9 @@ module modsimpleice2
              do k=kmax,1,-1
                 do j=2,j1
                    do i=2,i1
-                      if (qr_spl(i,j,k) > qrmin) then
-                         tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                      if (qr_spl(i,j,k) > qrmin) then                       !*rsgratio(i,j,k) removed from here, since it is 1
+                         tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                         
                          vtf=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
 
                          vtf=min(wfallmax,vtf)
