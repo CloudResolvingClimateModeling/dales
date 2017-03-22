@@ -571,7 +571,7 @@ module modsimpleice2
     end if
 
 
-    do k=1,k1
+    do k=1,kmax !was k1
     do j=2,j1
     do i=2,i1
       qrp(i,j,k)= qrp(i,j,k) + (qr_spl(i,j,k) - qr(i,j,k))/delt
