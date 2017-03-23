@@ -81,6 +81,7 @@ module modsimpleice2
     allocate(precep(2-ih:i1+ih,2-jh:j1+jh,k1))      ! precipitation for statistics
 
     allocate(ccrz(k1),ccsz(k1),ccgz(k1))
+    allocate(ccrz2(k1),ccsz2(k1),ccgz2(k1))
 
      gamb1r=lacz_gamma(bbr+1)
      gambd1r=lacz_gamma(bbr+ddr+1)
@@ -102,6 +103,11 @@ module modsimpleice2
         ccrz(k)=ccr*(1.29/rhobf(k))**0.5
         ccsz(k)=ccs*(1.29/rhobf(k))**0.5
         ccgz(k)=ccg*(1.29/rhobf(k))**0.5
+
+        ! these coefficients are used in evapdep - tabulated because of sqrt
+        ccrz2(k) = gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)
+        ccsz2(k) = gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5) ! NOTE: .27 here is suspect
+        ccgz2(k) = gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)
      end do
 
     nrp=0. ! not used in this scheme 
@@ -116,6 +122,7 @@ module modsimpleice2
     deallocate(qrmask,qcmask)
     deallocate(precep)
     deallocate(ccrz,ccsz,ccgz)
+    deallocate(ccrz2,ccsz2,ccgz2)
   end subroutine exitsimpleice
 
 !> Calculates the microphysical source term.
@@ -375,17 +382,21 @@ module modsimpleice2
                  evapdeps = 0
                  evapdepg = 0
                  thfun=1.e-7/(2.2*tmp0(i,j,k)/esl(i,j,k)+2.2e2/tmp0(i,j,k))  ! thermodynamic function
-                 
+
+
                  if (rain_present) then
-                    ventr=.78*n0rr/lambdar_**2 + gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)*lambdar_**(-2.5-0.5*ddr)
+                    !ventr=.78*n0rr/lambdar_**2 + gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)*lambdar_**(-2.5-0.5*ddr)
+                    ventr=.78*n0rr/lambdar_**2 + ccrz2(k) * lambdar_**(-2.5-0.5*ddr)
                     evapdepr=(4.*pi/(betar*rhof(k)))*(ssl-1.)*ventr*thfun
                  endif
                  if (snow_present) then
-                    vents=.78*n0rs/lambdas_**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas_**(-2.5-0.5*dds)
+                    !vents=.78*n0rs/lambdas_**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas_**(-2.5-0.5*dds)
+                    vents=.78*n0rs/lambdas_**2 + ccsz2(k)*lambdas_**(-2.5-0.5*dds)
                     evapdeps=(4.*pi/(betas*rhof(k)))*(ssi-1.)*vents*thfun
                  endif
                  if (graupel_present) then
-                    ventg=.78*n0rg/lambdag_**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag_**(-2.5-0.5*ddg)
+                    !ventg=.78*n0rg/lambdag_**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag_**(-2.5-0.5*ddg)
+                    ventg=.78*n0rg/lambdag_**2 + ccgz2(k)*lambdag_**(-2.5-0.5*ddg)
                     evapdepg=(4.*pi/(betag*rhof(k)))*(ssi-1.)*ventg*thfun
                  endif
                  
