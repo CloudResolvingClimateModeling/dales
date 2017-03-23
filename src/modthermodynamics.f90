@@ -523,7 +523,7 @@ contains
 function get_qsatur_fast(T, pres) result(qsatur)
   use modglobal, only : rd,rv,tup,tdn,ttab,esatltab,esatitab
   real,    intent(in)  :: T, pres
-  real     :: ilratio, esi, qsatur, tlo, thi, qvsl, qvsi
+  real     :: ilratio, qsatur, tlo, thi, esl, esi, qvsl, qvsi
   integer  :: tlonr, thinr
   
   ilratio = max(0.,min(1.,(T-tdn)/(tup-tdn))) ! ice liquid ratio
