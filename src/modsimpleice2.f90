@@ -135,7 +135,7 @@ module modsimpleice2
     integer :: jn
     integer :: n_spl      !<  sedimentation time splitting loop
 
-    real :: ilratio_,rsgratio_,sgratio_,lambdar_,lambdas_,lambdag_ ! local values instead of global arrays
+    real :: ilratio_,lambdar_,lambdas_,lambdag_ ! local values instead of global arrays
     logical :: qrmask_, qcmask_
     logical :: rain_present, snow_present, graupel_present   ! logicals for presence of different forms of water in the current cell
     logical :: any_qr, any_snow_graupel                      ! logicals for precense of any precipitation, and for presense of snow/graupel in the whole system
@@ -173,6 +173,7 @@ module modsimpleice2
 
     any_qr = .false.
     any_snow_graupel = .false.
+    qrmask_ = .false. ! needed if l_rain is false
     
     do k=kmax,1,-1 ! reverse order for upwind scheme at the end
        do j=2,j1
@@ -449,7 +450,7 @@ module modsimpleice2
 !    enddo
 !    enddo
 !    enddo
-! merged into loop above - OK when counting don
+! merged into loop above - OK when counting down
     write (*,*) 'any_qr:', any_qr
     write (*,*) 'any_snow_graupel:', any_snow_graupel
     write(*,*) 'n_spl', n_spl
@@ -517,8 +518,12 @@ module modsimpleice2
                 do j=2,j1
                    do i=2,i1
                       if (qr_spl(i,j,k) > qrmin) then                       !*rsgratio(i,j,k) removed from here, since it is 1
+                         if (rsgratio(i,j,k) /= 1) then
+                            write (*,*) 'rsgratio = ', rsgratio(i,j,k), i, j, k
+                            call abort
+                         end if
                          tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k))))**(1./(1.+bbr)) ! lambda rain
-                         
+                         !tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                          vtf=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
 
                          vtf=min(wfallmax,vtf)
