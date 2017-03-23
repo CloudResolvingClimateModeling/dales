@@ -538,12 +538,21 @@ function get_qsatur_fast(T, pres) result(qsatur)
   thi=ttab(thinr)
   
   ! linear interpolation between the tabulated esl, esi values
-  esl=(thi-T)*5.*esatltab(tlonr)+(T-tlo)*5.*esatltab(thinr) ! vapor pressure over water
-  esi=(thi-T)*5.*esatitab(tlonr)+(T-tlo)*5.*esatitab(thinr) ! vapor pressure over ice
-  !5 = 1/(thi-tlo)
+  ! 5 = 1/(thi-tlo)
+  if (ilratio > 0) then
+     esl=(thi-T)*5.*esatltab(tlonr)+(T-tlo)*5.*esatltab(thinr) ! vapor pressure over water
+     qvsl=(rd/rv)*esl/(pres - (1.-rd/rv)*esl) ! q vapor sat liquid Eq. (56) in [Heus et al 2010]
+  else
+     qvsl = 0
+  end if
+
+  if (ilratio < 1) then
+     esi=(thi-T)*5.*esatitab(tlonr)+(T-tlo)*5.*esatitab(thinr) ! vapor pressure over ice
+     qvsi=(rd/rv)*esi/(pres - (1.-rd/rv)*esi) ! q vapor sat ice
+  else
+     qvsi = 0
+  end if
   
-  qvsl=(rd/rv)*esl/(pres - (1.-rd/rv)*esl) ! q vapor sat liquid Eq. (56) in [Heus et al 2010]
-  qvsi=(rd/rv)*esi/(pres - (1.-rd/rv)*esi) ! q vapor sat ice
   qsatur = ilratio*qvsl+(1.-ilratio)*qvsi  ! q sat total - interpolated with ice-liquid ratio
   
   if (qsatur < 0) then
