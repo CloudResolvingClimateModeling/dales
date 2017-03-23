@@ -135,7 +135,7 @@ module modsimpleice2
     integer :: jn
     integer :: n_spl      !<  sedimentation time splitting loop
 
-    real :: ilratio_,lambdar_,lambdas_,lambdag_ ! local values instead of global arrays
+    real :: ilratio_,lambdar_,lambdas_,lambdag_, rsgratio_, sgratio_  ! local values instead of global arrays
     logical :: qrmask_, qcmask_
     logical :: rain_present, snow_present, graupel_present   ! logicals for presence of different forms of water in the current cell
     logical :: any_qr, any_snow_graupel                      ! logicals for precense of any precipitation, and for presense of snow/graupel in the whole system
@@ -225,29 +225,29 @@ module modsimpleice2
 
              if(qrmask_.eqv..true.) then
                 if(l_warm) then !partitioning and determination of intercept parameter
-                   rsgratio(i,j,k)=1.   ! rain vs snow/graupel partitioning
+                   rsgratio_=1.   ! rain vs snow/graupel partitioning
                    rain_present = .true.
                    
-                   sgratio(i,j,k)=0.   ! snow versus graupel partitioning
+                   sgratio_=0.   ! snow versus graupel partitioning
                    lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                    !lambdas_=lambdar_ ! lambda snow    ! probably not right but they will not be used
                    !lambdag_=lambdar_ ! lambda graupel
                 elseif(l_graupel) then                  
-                   rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
-                   sgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
-                   if (rsgratio(i,j,k) > 0) then                                                                               ! sg = 0 -> only snow
+                   rsgratio_=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
+                   sgratio_=max(0.,min(1.,(tmp0(i,j,k)-tdnsg)/(tupsg-tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
+                   if (rsgratio_ > 0) then                                                                               ! sg = 0 -> only snow
                       rain_present = .true.
-                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio_)))**(1./(1.+bbr)) ! lambda rain
                    endif
-                   if (rsgratio(i,j,k) < 1) then
-                      any_snow_graupel = .true.     ! whole system                                               
-                      if (sgratio(i,j,k) > 0) then
+                   if (rsgratio_ < 1) then
+                      any_snow_graupel = .true.     ! whole system  ! note: this may miss snow that appears during the precipitation substepping
+                      if (sgratio_ > 0) then
                          graupel_present = .true.
-                         lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! graupel
+                         lambdag_=(aag*n0rg*gamb1g/(rhof(k)*(qr(i,j,k)*(1.-rsgratio_)*sgratio_)))**(1./(1.+bbg)) ! graupel
                       endif                      
-                      if (sgratio(i,j,k) < 1) then
+                      if (sgratio_ < 1) then
                          snow_present = .true.
-                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! snow
+                         lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio_)*(1.-sgratio_))))**(1./(1.+bbs)) ! snow
                       endif
                    endif
 
@@ -255,16 +255,16 @@ module modsimpleice2
                    ! no: the +1.e-6 in the denominator make them finite
                    ! no snow/graupel -> large lambda
                 else ! rain, snow but no graupel
-                   rsgratio(i,j,k)=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
-                   sgratio(i,j,k)=0.
-                   if (rsgratio(i,j,k) > 0) then 
+                   rsgratio_=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg)))   ! rain vs snow/graupel partitioning
+                   sgratio_=0.
+                   if (rsgratio_ > 0) then 
                       rain_present = .true.
-                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                      lambdar_=(aar*n0rr*gamb1r/(rhof(k)*(qr(i,j,k)*rsgratio_)))**(1./(1.+bbr)) ! lambda rain
                    endif
-                   if (rsgratio(i,j,k) < 1) then
+                   if (rsgratio_ < 1) then
                       snow_present = .true.
                       any_snow_graupel = .true.     ! whole system
-                      lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
+                      lambdas_=(aas*n0rs*gamb1s/(rhof(k)*(qr(i,j,k)*(1.-rsgratio_))))**(1./(1.+bbs)) ! lambda snow
                    endif
                    ! lambdag_=lambdas_ ! FJ: probably wrong - routines below don't always check sgratio                                         
                 end if
@@ -331,9 +331,9 @@ module modsimpleice2
                     !qli=ql0(i,j,k)-qll
 
                     ! qr partitioning
-                    qrr=qr(i,j,k)*rsgratio(i,j,k)
-                    qrs=qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))
-                    qrg=qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)
+                    qrr=qr(i,j,k)*rsgratio_
+                    qrs=qr(i,j,k)*(1.-rsgratio_)*(1.-sgratio_)
+                    qrg=qr(i,j,k)*(1.-rsgratio_)*sgratio_
                     ! collection of cloud water by rain etc.
 
                     accr = 0
@@ -409,17 +409,17 @@ module modsimpleice2
                  vtf = 0
                  if (rain_present) then
                     vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar_**ddr)  ! terminal velocity rain
-                    vtf = vtf + rsgratio(i,j,k)*vtr
+                    vtf = vtf + rsgratio_*vtr
                  endif                
                  if (snow_present) then
                     vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas_**dds)  ! terminal velocity snow
-                    vtf = vtf + (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts
+                    vtf = vtf + (1.-rsgratio_)*(1.-sgratio_)*vts
                  endif                 
                  if (graupel_present) then
                     vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag_**ddg)  ! terminal velocity graupel
-                    vtf = vtf + (1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg
+                    vtf = vtf + (1.-rsgratio_)*sgratio_*vtg
                  endif
-                 ! vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
+                 ! vtf=rsgratio_*vtr+(1.-rsgratio_)*(1.-sgratio_)*vts+(1.-rsgratio_)*sgratio(i,j,k)*vtg ! weighted
                  vtf = min(wfallmax,vtf)
                  !write(*,*) 'vtf', vtf
                  
@@ -477,29 +477,32 @@ module modsimpleice2
 
                          ! what's with the 1e-6? just to avoid negative values?
 
+                         rsgratio_=max(0.,min(1.,(tmp0(i,j,k)-tdnrsg)/(tuprsg-tdnrsg))) ! rain vs snow/graupel partitioning   rsg = 1 if t > tuprsg
+                          sgratio_=max(0.,min(1.,(tmp0(i,j,k)-tdnsg) /(tupsg -tdnsg))) ! snow versus graupel partitioning    sg = 1 -> only graupel
+                         
                          !these ifs are here to avoid performing the power calculations unless they are going to be used
-                         if (rsgratio(i,j,k) > 0) then
-                            tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
+                         if (rsgratio_ > 0) then
+                            tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio_)))**(1./(1.+bbr)) ! lambda rain
                             vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
                          else
                             vtr = 0
                          end if
 
-                         if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
-                            tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)))))**(1./(1.+bbs)) ! lambda snow
+                         if ( (1.-rsgratio_)*(1.-sgratio_) > 0 ) then
+                            tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio_)*(1.-sgratio_))))**(1./(1.+bbs)) ! lambda snow
                             vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
                          else
                             vts = 0
                          end if
 
-                         if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
-                            tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k))))**(1./(1.+bbg)) ! lambda graupel
+                         if ( (1.-rsgratio_)*sgratio_ > 0 ) then
+                            tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio_)*sgratio_)))**(1./(1.+bbg)) ! lambda graupel
                             vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
                          else
                             vtg = 0
                          end if
 
-                         vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
+                         vtf=rsgratio_*vtr+(1.-rsgratio_)*(1.-sgratio_)*vts+(1.-rsgratio_)*sgratio_*vtg  ! mass-weighted terminal velocity
                          vtf=min(wfallmax,vtf)
                          sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
                       else
@@ -518,10 +521,10 @@ module modsimpleice2
                 do j=2,j1
                    do i=2,i1
                       if (qr_spl(i,j,k) > qrmin) then                       !*rsgratio(i,j,k) removed from here, since it is 1
-                         if (rsgratio(i,j,k) /= 1) then
-                            write (*,*) 'rsgratio = ', rsgratio(i,j,k), i, j, k
-                            call abort
-                         end if
+                         !if (rsgratio_ /= 1) then
+                         !   write (*,*) 'rsgratio = ', rsgratio_, i, j, k
+                         !   call abort
+                         !end if
                          tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                          !tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k))))**(1./(1.+bbr)) ! lambda rain
                          vtf=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
@@ -599,316 +602,5 @@ module modsimpleice2
 !      call simpleicetend !after corrections
 !    endif
   end subroutine simpleice
-
-
-
-
-
-
-
-
-  
-  subroutine autoconvert
-    use modglobal, only : i1,j1,k1,rlv,cp,tmelt
-    use modfields, only : ql0,exnf,rhof,tmp0
-    implicit none
-    real :: qll,qli,ddisp,lwc,autl,tc,times,auti,aut
-    integer:: i,j,k
-
-    if(l_berry.eqv..true.) then ! Berry/Hsie autoconversion
-    do k=1,k1
-    do j=2,j1
-    do i=2,i1
-        if (qcmask(i,j,k).eqv..true.) then
-          ! ql partitioning
-          qll=ql0(i,j,k)*ilratio(i,j,k)
-          qli=ql0(i,j,k)-qll
-          ddisp=0.146-5.964e-2*alog(Nc_0/2.e9) ! Relative dispersion coefficient for Berry autoconversion
-          lwc=1.e3*rhof(k)*qll ! Liquid water content in g/kg
-          autl=1./rhof(k)*1.67e-5*lwc*lwc/(5. + .0366*Nc_0/(1.e6*ddisp*(lwc+1.e-6)))
-          tc=tmp0(i,j,k)-tmelt ! Temperature wrt melting point
-          times=min(1.e3,(3.56*tc+106.7)*tc+1.e3) ! Time scale for ice autoconversion
-          auti=qli/times
-          aut = min(autl + auti,ql0(i,j,k)/delt)
-          qrp(i,j,k) = qrp(i,j,k)+aut
-          qtpmcr(i,j,k) = qtpmcr(i,j,k)-aut
-          thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*aut
-        endif
-      enddo
-      enddo
-      enddo
-    else ! Lin/Kessler autoconversion as in Khairoutdinov and Randall, 2006
-      do k=1,k1
-      do j=2,j1
-      do i=2,i1
-        if (qcmask(i,j,k).eqv..true.) then
-          ! ql partitioning
-          qll=ql0(i,j,k)*ilratio(i,j,k)
-          qli=ql0(i,j,k)-qll
-          autl=max(0.,timekessl*(qll-qll0))
-          tc=tmp0(i,j,k)-tmelt
-          auti=max(0.,betakessi*exp(0.025*tc)*(qli-qli0))
-          aut = min(autl + auti,ql0(i,j,k)/delt)
-          qrp(i,j,k) = qrp(i,j,k)+aut
-          qtpmcr(i,j,k) = qtpmcr(i,j,k)-aut
-          thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*aut
-        endif
-      enddo
-      enddo
-      enddo
-    endif
-
-  end subroutine autoconvert
-
-  subroutine accrete
-    use modglobal, only : i1,j1,k1,rlv,cp,pi
-    use modfields, only : ql0,exnf,rhof
-    implicit none
-    real :: qll,qli,qrr,qrs,qrg,&
-            gaccrl,gaccsl,gaccgl,gaccri,gaccsi,gaccgi,accr,accs,accg,acc
-    integer:: i,j,k
-
-    do k=1,k1
-    do j=2,j1
-    do i=2,i1
-      if (qrmask(i,j,k).eqv..true.) then
-      if (qcmask(i,j,k).eqv..true.) then ! apply mask
-        ! ql partitioning
-        qll=ql0(i,j,k)*ilratio(i,j,k)
-        qli=ql0(i,j,k)-qll
-        ! qr partitioning
-        qrr=qr(i,j,k)*rsgratio(i,j,k)
-        qrs=qr(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))
-        qrg=qr(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)
-        ! collection of cloud water by rain etc.
-        gaccrl=pi/4.*ccrz(k)*ceffrl*rhof(k)*qll*qrr*lambdar(i,j,k)**(bbr-2.-ddr)*gammaddr3/(aar*gamb1r)
-        gaccsl=pi/4.*ccsz(k)*ceffsl*rhof(k)*qll*qrs*lambdas(i,j,k)**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
-        gaccgl=pi/4.*ccgz(k)*ceffgl*rhof(k)*qll*qrg*lambdag(i,j,k)**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
-        gaccri=pi/4.*ccrz(k)*ceffri*rhof(k)*qli*qrr*lambdar(i,j,k)**(bbr-2.-ddr)*gammaddr3/(aar*gamb1r)
-        gaccsi=pi/4.*ccsz(k)*ceffsi*rhof(k)*qli*qrs*lambdas(i,j,k)**(bbs-2.-dds)*gammadds3/(aas*gamb1s)
-        gaccgi=pi/4.*ccgz(k)*ceffgi*rhof(k)*qli*qrg*lambdag(i,j,k)**(bbg-2.-ddg)*gammaddg3/(aag*gamb1g)
-        accr=(gaccrl+gaccri)*qrr/(qrr+1.e-9)
-        accs=(gaccsl+gaccsi)*qrs/(qrs+1.e-9)
-        accg=(gaccgl+gaccgi)*qrg/(qrg+1.e-9)
-        acc= min(accr+accs+accg,ql0(i,j,k)/delt)  ! total growth by accretion
-        qrp(i,j,k) = qrp(i,j,k)+acc
-        qtpmcr(i,j,k) = qtpmcr(i,j,k)-acc
-        thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*acc
-      end if
-      end if
-    enddo
-    enddo
-    enddo
-
-  end subroutine accrete
-
-  subroutine evapdep
-    use modglobal, only : i1,j1,k1,rlv,cp,pi
-    use modfields, only : qt0,ql0,exnf,rhof,tmp0,qvsl,qvsi,esl
-    implicit none
-
-    real :: ssl,ssi,ventr,vents,ventg,&
-            thfun,evapdepr,evapdeps,evapdepg,devap
-    integer:: i,j,k
-
-    do k=1,k1
-    do j=2,j1
-    do i=2,i1
-       if (qrmask(i,j,k).eqv..true.) then
-        ! saturation ratios
-        ssl=(qt0(i,j,k)-ql0(i,j,k))/qvsl(i,j,k)
-        ssi=(qt0(i,j,k)-ql0(i,j,k))/qvsi(i,j,k)
-        !integration over ventilation factors and diameters, see e.g. seifert 2008
-        ventr=.78*n0rr/lambdar(i,j,k)**2 + gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)*lambdar(i,j,k)**(-2.5-0.5*ddr)
-        vents=.78*n0rs/lambdas(i,j,k)**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas(i,j,k)**(-2.5-0.5*dds)
-        ventg=.78*n0rg/lambdag(i,j,k)**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag(i,j,k)**(-2.5-0.5*ddg)
-        thfun=1.e-7/(2.2*tmp0(i,j,k)/esl(i,j,k)+2.2e2/tmp0(i,j,k))  ! thermodynamic function
-        evapdepr=(4.*pi/(betar*rhof(k)))*(ssl-1.)*ventr*thfun
-        evapdeps=(4.*pi/(betas*rhof(k)))*(ssi-1.)*vents*thfun
-        evapdepg=(4.*pi/(betag*rhof(k)))*(ssi-1.)*ventg*thfun
-        ! total growth by deposition and evaporation
-        ! limit with qr and ql after accretion and autoconversion
-        devap= max(min(evapfactor*(evapdepr+evapdeps+evapdepg),ql0(i,j,k)/delt+qrp(i,j,k)),-qr(i,j,k)/delt-qrp(i,j,k))
-        qrp(i,j,k) = qrp(i,j,k)+devap
-        qtpmcr(i,j,k) = qtpmcr(i,j,k)-devap
-        thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*devap
-
-          
-
-          
-        ! ! saturation ratios
-        ! ssl=(qt0(i,j,k)-ql0(i,j,k))/qvsl(i,j,k)
-        ! ssi=(qt0(i,j,k)-ql0(i,j,k))/qvsi(i,j,k)
-
-        ! thfun=1.e-7/(2.2*tmp0(i,j,k)/esl(i,j,k)+2.2e2/tmp0(i,j,k))  ! thermodynamic function
-
-        ! !integration over ventilation factors and diameters, see e.g. seifert 2008
-        ! ventr=.78*n0rr/lambdar(i,j,k)**2 + gam2dr*.27*n0rr*sqrt(ccrz(k)/2.e-5)*lambdar(i,j,k)**(-2.5-0.5*ddr)
-        ! evapdepr=(4.*pi/(betar*rhof(k)))*(ssl-1.)*ventr*thfun
-
-
-        ! ! these IF:s are for optimizatin - calculate only if necessary
-        ! ! CHECK - they may be wrong !
-        ! ! what is lambdas if no snow is present?
-        ! !    --seems large but finite -> evapdeps contribution is small
-        
-        ! if (lambdas(i,j,k) /= 0) then ! snow - calculate only if snow present 
-        !    vents=.78*n0rs/lambdas(i,j,k)**2 + gam2ds*.27*n0rs*sqrt(ccsz(k)/2.e-5)*lambdas(i,j,k)**(-2.5-0.5*dds)
-        !    evapdeps=(4.*pi/(betas*rhof(k)))*(ssi-1.)*vents*thfun
-        ! else
-        !    evapdeps = 0
-        ! endif
-
-        ! if (lambdag(i,j,k) /= 0) then ! graupel - calculate only if graupel present
-        !    ventg=.78*n0rg/lambdag(i,j,k)**2 + gam2dg*.27*n0rg*sqrt(ccgz(k)/2.e-5)*lambdag(i,j,k)**(-2.5-0.5*ddg)
-        !    evapdepg=(4.*pi/(betag*rhof(k)))*(ssi-1.)*ventg*thfun
-        ! else
-        !    evapdepg = 0
-        ! endif
-
-        ! ! Grabowski 1998 has different coefficients here for snow
-        
-        
-        
-        ! ! total growth by deposition and evaporation
-        ! ! limit with qr and ql after accretion and autoconversion
-        ! devap= max(min(evapfactor*(evapdepr+evapdeps+evapdepg),ql0(i,j,k)/delt+qrp(i,j,k)),-qr(i,j,k)/delt-qrp(i,j,k))
-        ! qrp(i,j,k) = qrp(i,j,k)+devap
-        ! qtpmcr(i,j,k) = qtpmcr(i,j,k)-devap
-        ! thlpmcr(i,j,k) = thlpmcr(i,j,k)+(rlv/(cp*exnf(k)))*devap
-      end if
-    enddo
-    enddo
-    enddo
-
-  end subroutine evapdep
-
-  subroutine precipitate
-    use modglobal, only : i1,j1,k1,kmax,dzf,dzh
-    use modfields, only : rhof,rhobf
-    implicit none
-    integer :: i,j,k,jn
-    integer :: n_spl      !<  sedimentation time splitting loop
-    real :: dt_spl,wfallmax,vtr,vts,vtg,vtf
-    real :: tmp_lambdar, tmp_lambdas, tmp_lambdag
-    
-    wfallmax = 9.9
-    n_spl = ceiling(wfallmax*delt/(minval(dzf)*courantp))
-    dt_spl = delt/real(n_spl) !fixed time step
-
-    sed_qr = 0. ! reset sedimentation fluxes
-
-
-    ! merge this loop with the one below for regularity?
-    ! cost: must calculate lambda once more
-    !       separate assignment to qr_spl
-    do k=1,k1 !all these loops should go to kmax, not k1 ?
-    do j=2,j1
-    do i=2,i1
-      qr_spl(i,j,k) = qr(i,j,k)
-      if (qrmask(i,j,k).eqv..true.) then
-        vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
-        vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
-        vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
-        vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg ! weighted
-        vtf = min(wfallmax,vtf)
-        precep(i,j,k) = vtf*qr_spl(i,j,k)
-        sed_qr(i,j,k) = precep(i,j,k)*rhobf(k) ! convert to flux
-      else
-        precep(i,j,k) = 0.
-        sed_qr(i,j,k) = 0.
-      end if
-    enddo
-    enddo
-    enddo
-
-    !  advect precipitation using upwind scheme
-    do k=1,kmax
-    do j=2,j1
-    do i=2,i1
-      qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-    enddo
-    enddo
-    enddo
-
-    ! begin time splitting loop
-    IF (n_spl > 1) THEN
-      DO jn = 2 , n_spl
-
-        ! reset fluxes at each step of loop
-        sed_qr = 0.
-        do k=1,k1
-        do j=2,j1
-        do i=2,i1
-          if (qr_spl(i,j,k) > qrmin) then
-            ! re-evaluate lambda
-            !lambdar(i,j,k)=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-            !lambdas(i,j,k)=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-            !lambdag(i,j,k)=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
-            !vtr=ccrz(k)*(gambd1r/gamb1r)/(lambdar(i,j,k)**ddr)  ! terminal velocity rain
-            !vts=ccsz(k)*(gambd1s/gamb1s)/(lambdas(i,j,k)**dds)  ! terminal velocity snow
-            !vtg=ccgz(k)*(gambd1g/gamb1g)/(lambdag(i,j,k)**ddg)  ! terminal velocity graupel
-
-             ! what's with the 1e-6? just to avoid negative values?
-
-             !these ifs are here to avoid performing the power calculations unless they are going to be used
-            if (rsgratio(i,j,k) > 0) then
-               tmp_lambdar=(aar*n0rr*gamb1r/(rhof(k)*(qr_spl(i,j,k)*rsgratio(i,j,k)+1.e-6)))**(1./(1.+bbr)) ! lambda rain
-               vtr=ccrz(k)*(gambd1r/gamb1r)/(tmp_lambdar**ddr)  ! terminal velocity rain
-            else
-               vtr = 0
-            end if
-            
-            if ( (1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k)) > 0 ) then
-               tmp_lambdas=(aas*n0rs*gamb1s/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))+1.e-6)))**(1./(1.+bbs)) ! lambda snow
-               vts=ccsz(k)*(gambd1s/gamb1s)/(tmp_lambdas**dds)  ! terminal velocity snow
-            else
-               vts = 0
-            end if
-
-            if ( (1.-rsgratio(i,j,k))*sgratio(i,j,k) > 0 ) then
-               tmp_lambdag=(aag*n0rg*gamb1g/(rhof(k)*(qr_spl(i,j,k)*(1.-rsgratio(i,j,k))*sgratio(i,j,k)+1.e-6)))**(1./(1.+bbg)) ! lambda graupel
-               vtg=ccgz(k)*(gambd1g/gamb1g)/(tmp_lambdag**ddg)  ! terminal velocity graupel
-            else
-               vtg = 0
-            end if
-            
-            vtf=rsgratio(i,j,k)*vtr+(1.-rsgratio(i,j,k))*(1.-sgratio(i,j,k))*vts+(1.-rsgratio(i,j,k))*sgratio(i,j,k)*vtg  ! mass-weighted terminal velocity
-            vtf=min(wfallmax,vtf)
-            sed_qr(i,j,k) = vtf*qr_spl(i,j,k)*rhobf(k)
-          else
-            sed_qr(i,j,k) = 0.
-          endif
-        enddo
-        enddo
-        enddo
-
-        ! merge this loop with the one above - if looping from high k to low, so that sed_qr(k+1) has already been updated
-        ! gains: only one loop
-        !        need to calculate only where there is something to advect
-        ! 
-        ! only need sed_qr from the previous layer, not a full block
-        do k=1,kmax 
-        do j=2,j1
-        do i=2,i1
-          qr_spl(i,j,k) = qr_spl(i,j,k) + (sed_qr(i,j,k+1) - sed_qr(i,j,k))*dt_spl/(dzh(k+1)*rhobf(k))
-        enddo
-        enddo
-        enddo
-
-      ! end time splitting loop and if n>1
-      ENDDO
-    ENDIF
-
-    ! no thl and qt tendencies build in, implying no heat transfer between precipitation and air
-    do k=1,kmax
-    do j=2,j1
-    do i=2,i1
-      qrp(i,j,k)= qrp(i,j,k) + (qr_spl(i,j,k) - qr(i,j,k))/delt
-    enddo
-    enddo
-    enddo
-
-  end subroutine precipitate
 
 end module modsimpleice2
