@@ -50,6 +50,7 @@ contains
 
     allocate(th0av(k1))
     allocate(thv0(2-ih:i1+ih,2-jh:j1+jh,k1))
+    thv0 = 0.
     th0av = 0.
 
   end subroutine initthermodynamics
@@ -223,15 +224,16 @@ contains
 !! \author      Pier Siebesma   K.N.M.I.     06/01/1995
   subroutine diagfld
 
-  use modglobal, only : i1,ih,j1,jh,k1,nsv,zh,zf,cu,cv,ijtot,grav,rlv,cp,rd,rv,pref0
-  use modfields, only : u0,v0,thl0,qt0,ql0,sv0,u0av,v0av,thl0av,qt0av,ql0av,sv0av, &
-                        presf,presh,exnf,exnh,rhof,thvf
+  use modglobal, only  : i1,ih,j1,jh,k1,nsv,zh,zf,cu,cv,ijtot,grav,rlv,cp,rd,rv,pref0
+  use modfields, only  : u0,v0,thl0,qt0,ql0,sv0,u0av,v0av,thl0av,qt0av,ql0av,sv0av, &
+                         presf,presh,exnf,exnh,rhof,thvf
   use modsurfdata,only : thls,ps
-  use modmpi,    only : slabsum
+  use modmpi,    only  : slabsum
+  use modtestbed,only  : ltestbed
+
   implicit none
 
   integer :: k,n
-
 
 !*********************************************************
 !  1.0   calculate average profiles of u,v,thl,qt and ql *
@@ -279,7 +281,6 @@ contains
 
    call fromztop
 
-
 !***********************************************************
 !  3.0   Construct density profiles and exner function     *
 !       for further use in the program                     *
@@ -288,7 +289,7 @@ contains
 !    3.1 determine exner
 
    exnh(1) = (ps/pref0)**(rd/cp)
-   exnf(1) = (presf(1)/pref0)**(rd/cp)
+   exnf(1) = (presf(1)/pref0)**(rd/cp)  
    do k=2,k1
      exnf(k) = (presf(k)/pref0)**(rd/cp)
      exnh(k) = (presh(k)/pref0)**(rd/cp)
@@ -393,9 +394,9 @@ contains
 !! \author Pier Siebesma   K.N.M.I.     06/01/1995
   subroutine thermo (thl,qt,ql,pressure,exner)
 
-
-
   use modglobal, only : ih,jh,i1,j1,k1,es0,at,bt,rd,rv,rlv,cp,tmelt
+  use modmpi,    only : myid
+
   implicit none
 
   integer i, j, k
@@ -435,8 +436,6 @@ contains
         end do
       end do
     else
-
-
       do k=1,k1
         do j=2,j1
           do i=2,i1
@@ -454,198 +453,234 @@ contains
   return
   end subroutine thermo
 
-  
-  ! calculate qsatur as a function of T and pres using tables.
-  ! used in icethermo0, icethermoh
-  !
-  ! esatltab - water vapor pressure over liquid water
-  ! esatitab - water vapor pressure over ice
-  !
-  !
-  ! T range: 150 ... 550K - valid for the esatltab table
-  ! The routine may break earlier and return a negative qsatur, at the boiling point of water.
-  ! Then we print a warning and return qsatur = 1
-  subroutine get_qsatur(T, pres, qsatur, esl, qvsl, qvsi)
-    use modglobal, only : rd,rv,tup,tdn,ttab,esatltab,esatitab
-    real,    intent(in)  :: T, pres
-    real,    intent(out) :: esl, qvsl, qvsi
-    real     :: ilratio, esi, qsatur, tlo, thi
-    integer  :: tlonr, thinr
-    
-    ilratio = max(0.,min(1.,(T-tdn)/(tup-tdn))) ! ice liquid ratio
-    tlonr=int((T-150.)*5.)                      
-    thinr=tlonr+1
-    if(tlonr < 1 .or. tlonr > 1999) then      
-       write (*,*) 'tlonr out of range: ', tlonr
-       write (*,*) 'T = ', T
-       call abort
-    endif
-    tlo=ttab(tlonr)
-    thi=ttab(thinr)
+  subroutine icethermo0
+!> Calculates liquid water content.and temperature
+!! \author Steef B\"oing
 
-    ! linear interpolation between the tabulated esl, esi values
-    esl=(thi-T)*5.*esatltab(tlonr)+(T-tlo)*5.*esatltab(thinr) ! vapor pressure over water
-    esi=(thi-T)*5.*esatitab(tlonr)+(T-tlo)*5.*esatitab(thinr) ! vapor pressure over ice
-    !5 = 1/(thi-tlo)
-    
-    qvsl=(rd/rv)*esl/(pres - (1.-rd/rv)*esl) ! q vapor sat liquid Eq. (56) in [Heus et al 2010]
-    qvsi=(rd/rv)*esi/(pres - (1.-rd/rv)*esi) ! q vapor sat ice
-    qsatur = ilratio*qvsl+(1.-ilratio)*qvsi  ! q sat total - interpolated with ice-liquid ratio
-
-    if (qsatur < 0) then
-       write (*,*) 'Negative qsatur', qsatur
-       write (*,*) 'T        = ', T
-       write (*,*) 'pres     = ', pres
-       write (*,*) 'esl      = ', esl
-       write (*,*) 'esi      = ', esi
-       write (*,*) 'qvsl     = ', qvsl
-       write (*,*) 'qvsi     = ', qvsi
-       write (*,*) 'ilratio  = ', ilratio
-       ! if temperature is high enough, (1.-rd/rv)*esl > pres  --> qvsl < 0 --> qsatur < 0
-       ! call abort
-    endif
-
-    if (qsatur > 1.0 .or. qsatur < 0.0) then
-       qsatur = 1.0 
-       qvsl = 1.0
-       qvsi = 1.0
-       ! higher values are not possible
-       ! negative values here happen if T is above the boiling point
-       ! return 1 in the hope that the Newton solver behaves well
-    endif
-  end subroutine get_qsatur
-  
-
-subroutine icethermo0
-  !> Calculates liquid water content.and temperature
-  !! \author Steef B\"oing
-  ! refactored with table lookup in a function - Fredrik Jansson 2017
-  
-  use modglobal, only : i1,j1,k1,rlv,cp
+  use modglobal, only : i1,j1,k1,rd,rv,rlv,tup,tdn,cp,ttab,esatltab,esatitab
   use modfields, only : qvsl,qvsi,qt0,thl0,exnf,presf,tmp0,ql0,esl
+  use modmpi,    only : myid
   implicit none
-  
-  integer i, j, k
-  real :: esl1, qvsl1, qvsi1, qsatur, thlguess, thlguessmin, ttry
-  real :: Tnr, Tnr_old
-  integer :: niter, nitert
 
-  !     find the T, ql that correspond to theta_l, qt
-  !     calculation of T with Newton-Raphson method
-  !     first guess is Tnr=tl
-  nitert = 0              ! max number of iterations needed
-  do k=1,k1
-     do j=2,j1
+  integer i, j, k
+  real :: ilratio, esl1,esi1,qvsl1,qvsi1,qsatur, thlguess, thlguessmin,tlo,thi,ttry
+  real :: Tnr,Tnr_old
+  integer :: niter,nitert,tlonr,thinr
+
+!     calculation of T with Newton-Raphson method
+!     first guess is Tnr=tl
+      nitert = 0
+      niter = 0
+     print*,' check thl0 ; ',minval(thl0(2,2,:)),maxval(thl0(2,2,:))
+
+      do k=1,k1
+       do j=2,j1
         do i=2,i1
-           ! first guess for temperature
-           Tnr=exnf(k)*thl0(i,j,k)
-           call get_qsatur(Tnr, presf(k), qsatur, esl1, qvsl1, qvsi1)
-           
-           if(qt0(i,j,k)>qsatur) then
+            ! first guess for temperature
+            Tnr=exnf(k)*thl0(i,j,k)
+            ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+            tlonr=int((Tnr-150.)*5.)
+            thinr=tlonr+1
+            tlo=ttab(tlonr)
+            thi=ttab(thinr)
+            esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+            esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+            qvsl1=(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)
+            qvsi1=(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+            qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
+            if(qsatur < -0.1) then
+                 print*,i,j,k,' il ratio : ',ilratio,qvsl1,qvsi1
+                 print*,i,j,k,' esl1, esi1 : ',esl1,esi1
+                 print*,k,' presf(k) : ',presf(k),' exnf(k) : ',exnf(k),' thl0(i,j,k) : ',thl0(i,j,k)
+                 print*,i,j,k,' tlonr  : ',tlonr
+            endif
+!            if(i==54 .and. j==3 ) then 
+              ! print*,k,' presf(k) : ',presf(k),' exnf(k) : ',exnf(k)
+!               print*,k,'thl0 : ',thl0(i,j,k)
+!            endif
+            if(qt0(i,j,k)>qsatur) then
               Tnr_old=0.
               niter = 0
               thlguess = Tnr/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
-              
               ttry=Tnr-0.002
-              call get_qsatur(ttry, presf(k), qsatur, esl1, qvsl1, qvsi1)
+              ilratio = max(0.,min(1.,(ttry-tdn)/(tup-tdn)))
+              tlonr=int((ttry-150.)*5.)
+              thinr=tlonr+1
+              tlo=ttab(tlonr)
+              thi=ttab(thinr)
+              esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
+              esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
+              qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
               thlguessmin = ttry/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
-              
               Tnr = Tnr - (thlguess-thl0(i,j,k))/((thlguess-thlguessmin)*500.)
+              if(i==2 .and. j==2 .and. myid==1) print*,'myid ; ',myid,k,tnr,thl0(i,j,k)
               do while ((abs(Tnr-Tnr_old) > 0.002).and.(niter<100))
-                 niter = niter+1
-                 Tnr_old=Tnr
-                 
-                 call get_qsatur(Tnr, presf(k), qsatur, esl1, qvsl1, qvsi1)
-                 thlguess = Tnr/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
-                 
-                 ttry=Tnr-0.002  !dT = 0.002
-                 call get_qsatur(ttry, presf(k), qsatur, esl1, qvsl1, qvsi1)
-                 thlguessmin = ttry/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
-                 
-                 Tnr = Tnr - (thlguess-thl0(i,j,k))/((thlguess-thlguessmin)*500.)  ! 500 = 1/dT
+                niter = niter+1
+                Tnr_old=Tnr
+                ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+                tlonr=int((Tnr-150.)*5.)
+                if(tlonr<1 .or.tlonr>1999) then
+                 if(myid == 1 ) then
+                  write(*,*) 'icethermo crash: i,j,k,thl0(i,j,k),qt0(i,j,k)'
+                  write(*,*) i,j,k,thl0(i,j,k),qt0(i,j,k)
+                  write(*,*) ' MYID tnr tnr_old thlguess thlguessmin '
+                  write(*,*) myid, Tnr, Tnr_old,thlguess, thlguessmin
+                  write(*,*) ' qt0    qsatur '
+                  write(*,*) qt0(i,j,k),qsatur
+                  write(*,*) ' presf  exnf'
+                  write(*,*) presf(k),exnf(k)
+                  write(*,*) ' tlonr : ',tlonr
+                 endif
+                endif
+                thinr=tlonr+1
+                tlo=ttab(tlonr)
+                thi=ttab(thinr)
+                esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+                esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+                qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+                thlguess = Tnr/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
+
+                ttry=Tnr-0.002
+                ilratio = max(0.,min(1.,(ttry-tdn)/(tup-tdn)))
+                tlonr=int((ttry-150.)*5.)
+                thinr=tlonr+1
+                tlo=ttab(tlonr)
+                thi=ttab(thinr)
+                esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
+                esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
+                qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+                thlguessmin = ttry/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
+
+                Tnr = Tnr - (thlguess-thl0(i,j,k))/((thlguess-thlguessmin)*500.)
               enddo
               nitert =max(nitert,niter)
-              
-              ! Note  qvsl, qvsi, esl from here are saved in global tables
-              call get_qsatur(Tnr, presf(k), qsatur, esl1, qvsl1, qvsi1)
-           endif
-
-           ql0(i,j,k) = max(qt0(i,j,k)-qsatur,0.)
-           tmp0(i,j,k)= Tnr
-           esl(i,j,k)=esl1
-           qvsl(i,j,k)=qvsl1
-           qvsi(i,j,k)=qvsi1
+              tmp0(i,j,k)= Tnr
+              ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+              tlonr=int((Tnr-150.)*5.)
+              thinr=tlonr+1
+              tlo=ttab(tlonr)
+              thi=ttab(thinr)
+              esl(i,j,k)=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+              esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+              qvsl(i,j,k)=rd/rv*esl(i,j,k)/(presf(k)-(1.-rd/rv)*esl(i,j,k))
+              qvsi(i,j,k)=rd/rv*esi1/(presf(k)-(1.-rd/rv)*esi1)
+              qsatur = ilratio*qvsl(i,j,k)+(1.-ilratio)*qvsi(i,j,k)
+            else
+              tmp0(i,j,k)= Tnr
+              esl(i,j,k)=esl1
+              esi1=esi1
+              qvsl(i,j,k)=qvsl1
+              qvsi(i,j,k)=qvsi1
+            endif
+            ql0(i,j,k) = max(qt0(i,j,k)-qsatur,0.)
         end do
-     end do
-  end do
-  if(nitert>99) then
-     write(*,*) 'thermowarning - icethermo0'
-  endif
-end subroutine icethermo0
+       end do
+      end do
+      if(nitert>99) then
+      write(*,*) 'thermowarning'
+      endif
 
-subroutine icethermoh
-  !> Calculates liquid water content.and temperature
-  !! \author Steef B\"oing
-  ! refactored with table lookup in a function - Fredrik Jansson 2017
-  
-  use modglobal, only : i1,j1,k1,rlv,cp
+  end subroutine icethermo0
+
+  subroutine icethermoh
+!> Calculates liquid water content.and temperature
+!! \author Steef B\"oing
+
+  use modglobal, only : i1,j1,k1,rd,rv,rlv,tup,tdn,cp,ttab,esatltab,esatitab
   use modfields, only : qt0h,thl0h,exnh,presh,ql0h
-  
   implicit none
-  
-  integer i, j, k
-  real :: esl1, qvsl1, qvsi1, qsatur, thlguess, thlguessmin, ttry
-  real :: Tnr, Tnr_old
-  integer :: niter, nitert
 
-  !     find the T, ql that correspond to theta_l, qt
-  !     calculation of T with Newton-Raphson method
-  !     first guess is Tnr=tl
-  nitert = 0              ! max number of iterations needed
-  do k=1,k1
-     do j=2,j1
-        do i=2,i1
-           ! first guess for temperature
-           Tnr=exnh(k)*thl0h(i,j,k)
-           call get_qsatur(Tnr, presh(k), qsatur, esl1, qvsl1, qvsi1)
-           
-           if(qt0h(i,j,k)>qsatur) then
+  integer i, j, k
+  real :: ilratio, esl1, esi1, qvsl1,qvsi1, qsatur, thlguess, thlguessmin,tlo,thi,ttry
+  real :: Tnr,Tnr_old
+  integer :: niter,nitert,tlonr,thinr
+
+!     calculation of T with Newton-Raphson method
+!     first guess is Tnr=tl
+      nitert = 0
+      niter = 0
+      do k=1,k1
+      do j=2,j1
+      do i=2,i1
+            ! first guess for temperature
+            Tnr=exnh(k)*thl0h(i,j,k)
+            ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+            tlonr=int((Tnr-150.)*5.)
+            thinr=tlonr+1
+            tlo=ttab(tlonr)
+            thi=ttab(thinr)
+            esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+            esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+            qvsl1=(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)
+            qvsi1=(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+            qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
+            if(qt0h(i,j,k)>qsatur) then
               Tnr_old=0.
               niter = 0
               thlguess = Tnr/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
-              
               ttry=Tnr-0.002
-              call get_qsatur(ttry, presh(k), qsatur, esl1, qvsl1, qvsi1)
+              ilratio = max(0.,min(1.,(ttry-tdn)/(tup-tdn)))
+              tlonr=int((ttry-150.)*5.)
+              thinr=tlonr+1
+              tlo=ttab(tlonr)
+              thi=ttab(thinr)
+              esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
+              esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
+              qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
               thlguessmin = ttry/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
-              
+
               Tnr = Tnr - (thlguess-thl0h(i,j,k))/((thlguess-thlguessmin)*500.)
               do while ((abs(Tnr-Tnr_old) > 0.002).and.(niter<100))
-                 niter = niter+1
-                 Tnr_old=Tnr
-                 
-                 call get_qsatur(Tnr, presh(k), qsatur, esl1, qvsl1, qvsi1)
-                 thlguess = Tnr/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
-                 
-                 ttry=Tnr-0.002  !dT = 0.002
-                 call get_qsatur(ttry, presh(k), qsatur, esl1, qvsl1, qvsi1)
-                 thlguessmin = ttry/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
-                 
-                 Tnr = Tnr - (thlguess-thl0h(i,j,k))/((thlguess-thlguessmin)*500.)  ! 500 = 1/dT
+                niter = niter+1
+                Tnr_old=Tnr
+                ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+                tlonr=int((Tnr-150.)*5.)
+                if(tlonr<1 .or.tlonr>1999) then
+                  write(*,*) 'thermo crash: i,j,k,niter,thl0h(i,j,k),qt0h(i,j,k)'
+                  write(*,*) i,j,k,niter,thl0h(i,j,k),qt0h(i,j,k)
+                endif
+                thinr=tlonr+1
+                tlo=ttab(tlonr)
+                thi=ttab(thinr)
+                esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+                esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+                qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+                thlguess = Tnr/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
+
+                ttry=Tnr-0.002
+                ilratio = max(0.,min(1.,(ttry-tdn)/(tup-tdn)))
+                tlonr=int((ttry-150.)*5.)
+                thinr=tlonr+1
+                tlo=ttab(tlonr)
+                thi=ttab(thinr)
+                esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
+                esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
+                qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+                thlguessmin = ttry/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
+
+                Tnr = Tnr - (thlguess-thl0h(i,j,k))/((thlguess-thlguessmin)*500.)
               enddo
               nitert =max(nitert,niter)
+              ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
+              tlonr=int((Tnr-150.)*5.)
+              thinr=tlonr+1
+              tlo=ttab(tlonr)
+              thi=ttab(thinr)
+              esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
+              esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
+              qvsl1=rd/rv*esl1/(presh(k)-(1.-rd/rv)*esl1)
+              qvsi1=rd/rv*esi1/(presh(k)-(1.-rd/rv)*esi1)
+              qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
+            endif
+            ql0h(i,j,k) = max(qt0h(i,j,k)-qsatur,0.)
+      end do
+      end do
+      end do
+      if(nitert>99) then
+      write(*,*) 'thermowarning'
+      endif
 
-              call get_qsatur(Tnr, presh(k), qsatur, esl1, qvsl1, qvsi1)
-           endif
-           
-           ql0h(i,j,k) = max(qt0h(i,j,k)-qsatur,0.)
-        end do
-     end do
-  end do
-  if(nitert>99) then
-     write(*,*) 'thermowarning - icethermoh'
-  endif
-  
-end subroutine icethermoh
+  end subroutine icethermoh
 
 !> Calculates the scalars at half levels.
 !! If the kappa advection scheme is active, interpolation needs to be done consistently.

@@ -38,12 +38,12 @@ public :: inittimedep, timedep,ltimedep,exittimedep
 
 save
 ! switches for timedependent surface fluxes and large scale forcings
-  logical       :: ltimedep     = .false. !< Overall switch, input in namoptions
+  logical       :: ltimedep     = .true. !< Overall switch, input in namoptions
   logical       :: ltimedepz    = .true.  !< Switch for large scale forcings
   logical       :: ltimedepsurf = .true.  !< Switch for surface fluxes
 
-  integer, parameter    :: kflux = 100
-  integer, parameter    :: kls   = 100
+  integer               :: kflux
+  integer               :: kls
   real, allocatable     :: timeflux (:)
   real, allocatable     :: wqsurft  (:)
   real, allocatable     :: wtsurft  (:)
@@ -55,11 +55,11 @@ save
   real, allocatable     :: ugt     (:,:)
   real, allocatable     :: vgt     (:,:)
   real, allocatable     :: wflst   (:,:)
-  real, allocatable     :: dqtdxlst(:,:)
-  real, allocatable     :: dqtdylst(:,:)
   real, allocatable     :: dqtdtlst(:,:)
+  real, allocatable     :: dthldtlst(:,:)
   real, allocatable     :: thlpcart(:,:)
-  real, allocatable     :: thlproft(:,:)
+  real, allocatable     :: dudtlst (:,:)
+  real, allocatable     :: dvdtlst (:,:)
   real, allocatable     :: qtproft (:,:)
 
 
@@ -67,10 +67,18 @@ save
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine inittimedep
+
+    use modnudge, only :ntnudge    
     use modmpi,    only :myid,my_real,mpi_logical,mpierr,comm3d
-    use modglobal, only :btime,cexpnr,k1,kmax,ifinput,runtime,tres
+    use modglobal, only :btime,cexpnr,k1,kmax,ifinput,runtime,tres, zf
     use modsurfdata,only :ps,qts,wqsurf,wtsurf,thls
     use modtimedepsv, only : inittimedepsv
+
+    use modtestbed,  only : ltestbed,&
+                            tb_time,tb_ps,tb_qts,tb_thls,tb_wqs,tb_wts,&
+                            tb_w,tb_ug,tb_vg,tb_thl,tb_qt,&
+                            tb_uadv,tb_vadv,tb_qtadv,tb_thladv
+
     implicit none
 
     character (80):: chmess
@@ -78,63 +86,105 @@ contains
     integer :: k,t, ierr
     real :: dummyr
     real, allocatable, dimension (:) :: height
+
     if (.not. ltimedep) return
+
+    if (ltestbed) then
+      kflux = ntnudge
+      kls   = ntnudge
+    else
+      kflux = 1
+      kls   = 1
+    end if
 
     allocate(height(k1))
     allocate(timeflux (0:kflux))
-    allocate(wqsurft  (kflux))
-    allocate(wtsurft  (kflux))
-    allocate(timels  (0:kls))
-    allocate(ugt     (k1,kls))
-    allocate(vgt     (k1,kls))
-    allocate(wflst   (k1,kls))
-    allocate(dqtdxlst(k1,kls))
-    allocate(dqtdylst(k1,kls))
-    allocate(dqtdtlst(k1,kls))
-    allocate(thlpcart(k1,kls))
-    allocate(thlproft(k1,kls))
-    allocate(qtproft(k1,kls))
-    allocate(thlst   (0:kls))
-    allocate(qtst    (0:kls))
-    allocate(pst    (0:kls))
+    allocate(wqsurft    (kflux))
+    allocate(wtsurft    (kflux))
+    allocate(timels     (0:kls))
+    allocate(ugt       (k1,kls))
+    allocate(vgt       (k1,kls))
+    allocate(wflst     (k1,kls))
+    allocate(thlpcart  (k1,kls))
+    allocate(qtproft   (k1,kls))
+    allocate(dqtdtlst  (k1,kls))
+    allocate(dthldtlst (k1,kls))
+    allocate(dudtlst   (k1,kls))
+    allocate(dvdtlst   (k1,kls))
+    allocate(thlst      (0:kls))
+    allocate(qtst       (0:kls))
+    allocate(pst        (0:kls))
 
-    timeflux = 0
-    wqsurft  = wqsurf
-    wtsurft  = wtsurf
-    thlst    = thls
-    qtst     = qts
-    pst      = ps
-
-    timels   = 0
-    ugt      = 0
-    vgt      = 0
-    wflst    = 0
-    dqtdxlst = 0
-    dqtdylst = 0
-    dqtdtlst = 0
-    thlpcart = 0
-    thlproft = 0
-    qtproft  = 0
+!
+!  Initialize parameters
+!
+    timels    = 0
+    pst       = 0
+    qtst      = 0
+    thlst     = 0
+    ugt       = 0
+    vgt       = 0
+    wflst     = 0
+    wqsurft   = 0
+    wtsurft   = 0
+    thlpcart  = 0
+    qtproft   = 0
+    dqtdtlst  = 0
+    dthldtlst = 0
+    dudtlst   = 0
+    dvdtlst   = 0
 
     if (myid==0) then
 
 !    --- load lsforcings---
+      if (ltestbed) then
+!
+!     Fill the existing arrays for the timestepping with the domian avaraged HARMONIE arrays
+!
+        write(*,*) 'inittimedep: testbed mode: data for time-dependent forcing obtained from HARMONIE output'
+      
+        timeflux(1:kflux) = tb_time
+        timels  (1:kls  ) = tb_time
 
+        pst      = tb_ps
+        qtst     = tb_qts
+        thlst    = tb_thls
+        wqsurft  = tb_wqs
+        wtsurft  = tb_wts
+        height  (:) = zf
 
-      open(ifinput,file='ls_flux.inp.'//cexpnr)
-      read(ifinput,'(a80)') chmess
-      write(6,*) chmess
-      read(ifinput,'(a80)') chmess
-      write(6,*) chmess
-      read(ifinput,'(a80)') chmess
-      write(6,*) chmess
+        do t=1,kls
+          ugt      (:,t) = tb_ug    (t,:)
+          vgt      (:,t) = tb_vg    (t,:)
+          wflst    (:,t) = tb_w     (t,:)
+          qtproft  (:,t) = tb_qt    (t,:)
+          thlpcart (:,t) = tb_thl   (t,:)
+          dqtdtlst (:,t) = tb_qtadv (t,:)
+          dthldtlst(:,t) = tb_thladv(t,:)
+          dudtlst  (:,t) = tb_uadv  (t,:)
+          dvdtlst  (:,t) = tb_vadv  (t,:)
+        end do
 
-      timeflux = 0
-      timels   = 0
+      else
 
+       wqsurft  = wqsurf
+       wtsurft  = wtsurf
+       thlst    = thls
+       qtst     = qts
+       pst      = ps
+
+        open(ifinput,file='ls_flux.inp.'//cexpnr)
+        read(ifinput,'(a80)') chmess
+        write(6,*) chmess
+        read(ifinput,'(a80)') chmess
+        write(6,*) chmess
+        read(ifinput,'(a80)') chmess
+        write(6,*) chmess
+
+        timeflux = 0
+        timels   = 0
 
 !      --- load fluxes---
-
       t    = 0
       ierr = 0
       do while (timeflux(t) < (tres*real(btime)+runtime))
@@ -157,84 +207,62 @@ contains
       backspace (ifinput)
 !     ---load large scale forcings----
 
-      t = 0
+       end if   !ltestbed     
 
-      do while (timels(t) < (tres*real(btime)+runtime))
-        t = t + 1
-        chmess1 = "#"
-        ierr = 1 ! not zero
-        !search for the next line consisting of "# time", from there onwards the profiles will be read
-        do while (.not.(chmess1 == "#" .and. ierr ==0))
-          read(ifinput,*,iostat=ierr) chmess1,timels(t)
-          if (ierr < 0) then
-            stop 'STOP: No time dependend data for end of run'
-          end if
-        end do
-        write (*,*) 'timels = ',timels(t)
-        do k=1,kmax
-          read (ifinput,*) &
-            height  (k)  , &
-            ugt     (k,t), &
-            vgt     (k,t), &
-            wflst   (k,t), &
-            dqtdxlst(k,t), &
-            dqtdylst(k,t), &
-            dqtdtlst(k,t), &
-            thlpcart(k,t)
-        end do
-        do k=kmax,1,-1
-          write (6,'(3f7.1,5e12.4)') &
-            height  (k)  , &
-            ugt     (k,t), &
-            vgt     (k,t), &
-            wflst   (k,t), &
-            dqtdxlst(k,t), &
-            dqtdylst(k,t), &
-            dqtdtlst(k,t), &
-            thlpcart(k,t)
-        end do
-      end do
-
-      if ((timels(1) > (tres*real(btime)+runtime)) .or. (timeflux(1) > (tres*real(btime)+runtime))) then
-        write(6,*) 'Time dependent large scale forcings sets in after end of simulation -->'
-        write(6,*) '--> only time dependent surface variables'
-        ltimedepz=.false.
-      end if
-
-      close(ifinput)
+!======================================== End surface data =============================================
 
     end if
 
-    call MPI_BCAST(timeflux(1:kflux),kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(wtsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(wqsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(thlst            ,kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(qtst             ,kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(pst              ,kflux,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(timels(1:kls)    ,kls,MY_REAL  ,0,comm3d,mpierr)
-    call MPI_BCAST(ugt              ,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(vgt              ,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(wflst            ,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(dqtdxlst,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(dqtdylst,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(dqtdtlst,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(thlpcart,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(thlproft,kmax*kls,MY_REAL,0,comm3d,mpierr)
-    call MPI_BCAST(qtproft ,kmax*kls,MY_REAL,0,comm3d,mpierr)
+    if(ltestbed) then
 
-    call MPI_BCAST(ltimedepsurf ,1,MPI_LOGICAL,0,comm3d,mpierr)
-    call MPI_BCAST(ltimedepz    ,1,MPI_LOGICAL,0,comm3d,mpierr)
-    call inittimedepsv
-    call timedep
+     call MPI_BCAST(timeflux(1:kflux),kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(wtsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(wqsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(thlst            ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(qtst             ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(pst              ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(timels(1:kls)    ,kls,MY_REAL  ,0,comm3d,mpierr)
+     call MPI_BCAST(ugt              ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(vgt              ,k1*kls,MY_REAL,0,comm3d,mpierr)   
+     call MPI_BCAST(wflst            ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(dqtdtlst         ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(dthldtlst        ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(thlpcart         ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(qtproft          ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(ltimedepsurf ,1,MPI_LOGICAL,0,comm3d,mpierr)
+     call MPI_BCAST(ltimedepz    ,1,MPI_LOGICAL,0,comm3d,mpierr)
+     call inittimedepsv
+     call timedep
+
+    else
+
+     call MPI_BCAST(timeflux(1:kflux),kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(wtsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(wqsurft          ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(thlst            ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(qtst             ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(pst              ,kflux,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(timels(1:kls)    ,kls,MY_REAL  ,0,comm3d,mpierr)
+     call MPI_BCAST(ugt              ,kmax*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(vgt              ,kmax*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(wflst            ,kmax*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(thlpcart,kmax*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(qtproft ,kmax*kls,MY_REAL,0,comm3d,mpierr)
+
+     call MPI_BCAST(ltimedepsurf ,1,MPI_LOGICAL,0,comm3d,mpierr)
+     call MPI_BCAST(ltimedepz    ,1,MPI_LOGICAL,0,comm3d,mpierr)
+     call inittimedepsv
+     call timedep
+
+    endif
 
     deallocate(height)
-
 
   end subroutine inittimedep
 
   subroutine timedep
 
-!-----------------------------------------------------------------|
+!-----------------------------------------------------------------|dales_harm.o9510600
 !                                                                 |
 !*** *timedep*  calculates ls forcings and surface forcings       |
 !               case as a funtion of timee                        |
@@ -264,10 +292,10 @@ contains
   end subroutine timedep
 
   subroutine timedepz
-    use modfields,   only : ug, vg, dqtdtls,dqtdxls,dqtdyls, wfls,whls, &
-                            thlpcar,dthldxls,dthldyls,dudxls,dudyls,dvdxls,dvdyls,dpdxl,dpdyl
+    use modfields,   only : ug, vg, wfls,whls,dqtdtls,thlpcar,thl0,dpdxl,dpdyl
     use modglobal,   only : rtimee,om23_gs,dzf,dzh,k1,kmax,llsadv
     use modmpi,      only : myid
+
     implicit none
 
     integer t,k
@@ -288,11 +316,8 @@ contains
     ug      = ugt     (:,t) + fac * ( ugt     (:,t+1) - ugt     (:,t) )
     vg      = vgt     (:,t) + fac * ( vgt     (:,t+1) - vgt     (:,t) )
     wfls    = wflst   (:,t) + fac * ( wflst   (:,t+1) - wflst   (:,t) )
-    dqtdxls = dqtdxlst(:,t) + fac * ( dqtdxlst(:,t+1) - dqtdxlst(:,t) )
-    dqtdyls = dqtdylst(:,t) + fac * ( dqtdylst(:,t+1) - dqtdylst(:,t) )
     dqtdtls = dqtdtlst(:,t) + fac * ( dqtdtlst(:,t+1) - dqtdtlst(:,t) )
     thlpcar = thlpcart(:,t) + fac * ( thlpcart(:,t+1) - thlpcart(:,t) )
-
 
     do k=1,kmax
       dpdxl(k) =  om23_gs*vg(k)
@@ -311,13 +336,6 @@ contains
     if (llsadv) then
       if (myid==0) stop 'llsadv should not be used anymore. Large scale gradients were calculated in a non physical way (and lmomsubs had to be set to true to retain conservation of mass)'
     end if
-
-    dudxls   = 0.0
-    dudyls   = 0.0
-    dvdxls   = 0.0
-    dvdyls   = 0.0
-    dthldxls = 0.0
-    dthldyls = 0.0
 
     return
   end subroutine timedepz
@@ -360,7 +378,7 @@ contains
     use modtimedepsv, only : exittimedepsv
     implicit none
     if (.not. ltimedep) return
-    deallocate(timels,ugt,vgt,wflst,dqtdxlst,dqtdylst,dqtdtlst,thlpcart)
+    deallocate(timels,ugt,vgt,wflst,dqtdtlst,thlpcart)
     deallocate(timeflux, wtsurft,wqsurft,thlst,qtst,pst)
     call exittimedepsv
 

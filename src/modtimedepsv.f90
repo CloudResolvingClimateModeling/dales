@@ -54,8 +54,10 @@ save
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine inittimedepsv
-    use modmpi,   only :myid,my_real,mpi_logical,mpierr,comm3d
-    use modglobal,only :btime,cexpnr,kmax,k1,ifinput,runtime,tres,nsv
+    use modmpi,    only : myid,my_real,mpi_logical,mpierr,comm3d
+    use modglobal, only : btime,cexpnr,kmax,k1,ifinput,runtime,tres,nsv
+    use modtestbed,only : ltestbed    
+
     implicit none
 
     character (80):: chmess
@@ -79,7 +81,9 @@ contains
 
     if (myid==0) then
 
-!    --- load lsforcings---
+!    --- load lsforcings---  
+
+     if(ltestbed) print*,' The surface fluxes do not originate from HARMONIE in the current version '
 
 
       open(ifinput,file='ls_fluxsv.inp.'//cexpnr)

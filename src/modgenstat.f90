@@ -206,7 +206,7 @@ contains
     dt_lim = min(dt_lim,tnext)
 
     if (abs(timeav/dtav-nsamples)>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'timeav must be a integer multiple of dtav (MODGENSTAT)'
     end if
 
     allocate(umn(k1)       ,vmn   (k1))
@@ -428,8 +428,6 @@ contains
         end if
         call define_nc( ncid, NVar, ncname)
       end if
-
-
       end if
 
   end subroutine initgenstat

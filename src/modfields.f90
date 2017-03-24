@@ -101,16 +101,7 @@ save
   real, allocatable :: dpdxl(:)                      !<   large scale pressure x-gradient
   real, allocatable :: dpdyl(:)                      !<   large scale pressure y-gradient
 
-  real, allocatable :: dthldxls(:)                   !<   large scale x-gradient of th_liq
-  real, allocatable :: dthldyls(:)                   !<   large scale y-gradient of th_liq
-  real, allocatable :: dqtdxls(:)                    !<   large scale x-gradient of q_tot
-  real, allocatable :: dqtdyls(:)                    !<   large scale y-gradient of q_tot
   real, allocatable :: dqtdtls(:)                    !<   large scale y-gradient of q_tot
-  real, allocatable :: dudxls(:)                     !<   large scale x-gradient of u
-
-  real, allocatable :: dudyls(:)                     !<   large scale y-gradient of u
-  real, allocatable :: dvdxls(:)                     !<   large scale x-gradient of v
-  real, allocatable :: dvdyls(:)                     !<   large scale y-gradient of v
   real, allocatable :: wfls  (:)                     !<   large scale y-gradient of v
   real, allocatable :: ql0h(:,:,:)
   real, allocatable :: dthvdz(:,:,:)!<   theta_v at half level
@@ -200,15 +191,7 @@ subroutine initfields
     allocate(vg(k1))
     allocate(dpdxl(k1))
     allocate(dpdyl(k1))
-    allocate(dthldxls(k1))
-    allocate(dthldyls(k1))
-    allocate(dqtdxls(k1))
-    allocate(dqtdyls(k1))
     allocate(dqtdtls(k1))
-    allocate(dudxls(k1))
-    allocate(dudyls(k1))
-    allocate(dvdxls(k1))
-    allocate(dvdyls(k1))
     allocate(wfls  (k1))
     allocate(ql0h(2-ih:i1+ih,2-jh:j1+jh,k1))
     allocate(dthvdz(2-ih:i1+ih,2-jh:j1+jh,k1))
@@ -243,7 +226,7 @@ subroutine initfields
     qt0av=0.;ql0av=0.;thl0av=0.;u0av=0.;v0av=0.;sv0av=0.
     thlprof=0.;qtprof=0.;uprof=0.;vprof=0.;e12prof=0.;svprof=0.
     ug=0.;vg=0.;dpdxl=0.;dpdyl=0.;wfls=0.;whls=0.;thlpcar = 0.
-    dthldxls=0.;dthldyls=0.;dqtdxls=0.;dqtdyls=0.;dudxls=0.;dudyls=0.;dvdxls=0.;dvdyls=0.
+    dqtdtls=0.
     dthvdz=0.
     SW_up_TOA=0.;SW_dn_TOA=0.;LW_up_TOA=0.;LW_dn_TOA=0.
     qvsl=0.;qvsi=0.;esl=0.
@@ -261,7 +244,7 @@ subroutine initfields
     deallocate(rhobf,rhobh)
     deallocate(drhobdzf,drhobdzh)
     deallocate(ql0,tmp0,ql0h,thv0h,dthvdz,whls,presf,presh,exnf,exnh,thvh,thvf,rhof,qt0av,ql0av,thl0av,u0av,v0av)
-    deallocate(ug,vg,dpdxl,dpdyl,dthldxls,dthldyls,dqtdxls,dqtdyls,dqtdtls,dudxls,dudyls,dvdxls,dvdyls,wfls)
+    deallocate(ug,vg,dpdxl,dpdyl,wfls,dqtdtls)
     deallocate(thlprof,qtprof,uprof,vprof,e12prof,sv0av,svprof)
     deallocate(thlpcar)
     deallocate(SW_up_TOA,SW_dn_TOA,LW_up_TOA,LW_dn_TOA)

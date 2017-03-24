@@ -159,7 +159,6 @@ program DALES      !Version 4.0.0alpha
   ! call initmpi initmpi depends on options in the namelist, call moved to startup
   call initmpicomm
   call startup
-
 !---------------------------------------------------------
 !      2     INITIALIZE STATISTICAL ROUTINES AND ADD-ONS
 !---------------------------------------------------------
@@ -176,7 +175,7 @@ program DALES      !Version 4.0.0alpha
   !call initprojection
   call initcloudfield
   call initfielddump
-  call initsamptend
+  call initsamptend 
   call initradstat
   call initlsmstat
   !call initparticles

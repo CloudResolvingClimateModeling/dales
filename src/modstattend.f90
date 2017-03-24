@@ -96,7 +96,7 @@ subroutine initstattend
       stop 'dtav should be a integer multiple of dtmax'
     end if
     if (abs(timeav/dtav-nsamples)>1e-4) then
-      stop 'timeav should be a integer multiple of dtav'
+      stop 'timeav should be a integer multiple of dtav (MODSTATTEND)'
     end if
 
     allocate (upmn(k1,nrfields),vpmn(k1,nrfields),wpmn(k1,nrfields),thlpmn(k1,nrfields),qtpmn(k1,nrfields))

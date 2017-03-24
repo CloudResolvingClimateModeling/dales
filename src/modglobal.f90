@@ -31,7 +31,7 @@ save
       integer :: jtot = 64
       integer :: imax
       integer :: jmax
-      integer :: kmax = 96
+      integer :: kmax = 65
       integer ::  i1
       integer ::  j1
       integer ::  k1
@@ -309,22 +309,10 @@ contains
 
     ! Global constants
 
-    
-
-    ! esatltab(m) gives the saturation vapor pressure over water at T corresponding to m
-    ! esatitab(m) is the same over ice
-    !
-    ! Murphy and Koop 2005 parameterization formula.
-    ! http://dx.doi.org/10.1256/qj.04.94
-    ! http://www.radiativetransfer.org/misc/atmlabdoc/atmlab/h2o/thermodynamics/e_eq_water_mk.html
-    !
-    ! note that the start temperature and step size of the table need to match those
-    ! in get_qsatur() in modthermodynamics.f90
     do m=1,2000
     ttab(m)=150.+0.2*m
     esatltab(m)=exp(54.842763-6763.22/ttab(m)-4.21*log(ttab(m))+0.000367*ttab(m)+&
-         tanh(0.0415*(ttab(m)-218.8))*(53.878-1331.22/ttab(m)-9.44523*log(ttab(m))+ 0.014025*ttab(m)))
-    
+    tanh(0.0415*(ttab(m)-218.8))*(53.878-1331.22/ttab(m)-9.44523*log(ttab(m))+ 0.014025*ttab(m)))
     esatitab(m)=exp(9.550426-5723.265/ttab(m)+3.53068*log(ttab(m))-0.00728332*ttab(m))
     end do
 
@@ -375,7 +363,6 @@ contains
     allocate(zf(k1))
     allocate(delta(k1))
 
-
     ijtot = real(itot*jtot)
 
     dx = xsize / float(itot)
@@ -421,7 +408,6 @@ contains
     end do
 
     do k=1,k1
-
       delta(k) = (dx*dy*dzf(k))**(1./3.)
     end do
 
