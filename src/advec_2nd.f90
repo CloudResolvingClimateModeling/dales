@@ -115,13 +115,13 @@ subroutine advecc_2nd(putin,putout)
        dzfm = dzf(k-1)/(dzf(k)*dzh(k))*.5
        do j=2,j1
           do i=2,i1
-!          putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k))*( &
+!          putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k)) *( &
 !                w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k+1) ) / dzh(k+1) &
 !               -w0(i,j,k ) * (rhobf(k-1) * putin(i,j,k-1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k-1) ) / dzh(k) &
-!                )/ (2. * dzf(k))
+!                ) / (2. * dzf(k))
           putout(i,j,k)  = putout(i,j,k) - ( &
-                w0(i,j,k+1) * (rp * putin(i,j,k+1) +  putin(i,j,k) * dzfp ) )  &
-               -w0(i,j,k )  * (rm * putin(i,j,k-1) +  putin(i,j,k) * dzfm ) )  &
+                w0(i,j,k+1) * (rp * putin(i,j,k+1) +  putin(i,j,k) * dzfp )   &
+               -w0(i,j,k )  * (rm * putin(i,j,k-1) +  putin(i,j,k) * dzfm )   &
                 )                   
         end do
       end do
