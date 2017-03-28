@@ -79,12 +79,19 @@ subroutine advecc_2nd(putin,putout)
       end do
     end do
 
+    do k=2,kmax
+       rp = rhobf(k+1)/rhobf(k)
+       rm = rhobf(k-1)/rhobf(k)
     do j=2,j1
-    do k=2,kmax         
        do i=2,i1
-          putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k))*( &
-                w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) + rhobf(k) * putin(i,j,k)) &
-                -w0(i,j,k)   * (rhobf(k-1) * putin(i,j,k-1)+ rhobf(k) * putin(i,j,k)) &
+          !putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k))*( &
+          !      w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) + rhobf(k) * putin(i,j,k)) &
+          !     -w0(i,j,k)   * (rhobf(k-1) * putin(i,j,k-1) + rhobf(k) * putin(i,j,k)) &
+          !      )*dzi5
+          
+          putout(i,j,k)  = putout(i,j,k) - ( &
+                w0(i,j,k+1) * (rp * putin(i,j,k+1) +  putin(i,j,k)) &
+                -w0(i,j,k)  * (rm * putin(i,j,k-1) +  putin(i,j,k)) &
                 )*dzi5
         end do
       end do
