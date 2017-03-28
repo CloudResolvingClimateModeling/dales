@@ -41,7 +41,9 @@ subroutine advecc_2nd(putin,putout)
 !  real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1) :: rhoputin
 
   integer :: i,j,k,ip,im,jp,jm,kp,km
+  real    :: rp, rm, dzfp, dzfm
 
+  
 !  do k=1,k1
 !    do j=2-jh,j1+jh
 !      do i=2-ih,i1+ih
@@ -98,13 +100,22 @@ subroutine advecc_2nd(putin,putout)
       end do
     end do
 
-    do j=2,j1
+
     do k=2,kmax
-       do i=2,i1
-          putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k))*( &
-                w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k+1) ) / dzh(k+1) &
-               -w0(i,j,k ) * (rhobf(k-1) * putin(i,j,k-1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k-1) ) / dzh(k) &
-                )/ (2. * dzf(k))
+       rp = rhobf(k+1)/(rhobf(k)*dzh(k+1))*.5
+       rm = rhobf(k-1)/(rhobf(k)*dzh(k))*.5
+       dzfp = dzf(k+1)/(dzf(k)*dzh(k+1))*.5
+       dzfm = dzf(k-1)/(dzf(k)*dzh(k))*.5
+       do j=2,j1
+          do i=2,i1
+!          putout(i,j,k)  = putout(i,j,k)- (1./rhobf(k))*( &
+!                w0(i,j,k+1) * (rhobf(k+1) * putin(i,j,k+1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k+1) ) / dzh(k+1) &
+!               -w0(i,j,k ) * (rhobf(k-1) * putin(i,j,k-1) * dzf(k) + rhobf(k) * putin(i,j,k) * dzf(k-1) ) / dzh(k) &
+!                )/ (2. * dzf(k))
+          putout(i,j,k)  = putout(i,j,k) - ( &
+                w0(i,j,k+1) * (rp * putin(i,j,k+1) +  putin(i,j,k) * dzfp ) )  &
+               -w0(i,j,k )  * (rm * putin(i,j,k-1) +  putin(i,j,k) * dzfm ) )  &
+                )                   
         end do
       end do
     end do
