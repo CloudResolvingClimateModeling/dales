@@ -165,7 +165,10 @@ subroutine tstep_integrate
   use modglobal, only : i1,j1,kmax,nsv,rdt,rk3step,e12min
   use modfields, only : u0,um,up,v0,vm,vp,w0,wm,wp,wp_store,&
                         thl0,thlm,thlp,qt0,qtm,qtp,&
-                        e120,e12m,e12p,sv0,svm,svp
+                        e120,e12m,e12p,sv0,svm,svp,&
+                        ug, vg, uadv, vadv, wfls,whls,dpdxl,dpdyl,dqtdtls,dthldtls
+  use modtestbed,only : ltestbed
+
   implicit none
 
   integer i,j,k,n
@@ -174,6 +177,8 @@ subroutine tstep_integrate
   rk3coef = rdt / (4. - dble(rk3step))
   wp_store = wp
 
+
+if( .not. ltestbed) then
   do k=1,kmax
     do j=2,j1
       do i=2,i1
@@ -195,6 +200,30 @@ subroutine tstep_integrate
       end do
     end do
   end do
+
+else
+
+  do k=1,kmax
+    do j=2,j1
+      do i=2,i1
+        u0(i,j,k)   = um(i,j,k)   + rk3coef * uadv(k)
+        v0(i,j,k)   = vm(i,j,k)   + rk3coef * vadv(k)
+        w0(i,j,k)   = wm(i,j,k)   + rk3coef * wfls(k)
+        thl0(i,j,k) = thlm(i,j,k) + rk3coef * dthldtls(k)
+        qt0(i,j,k)  = qtm(i,j,k)  + rk3coef * dqtdtls(k)
+        e120(i,j,k) = e12m(i,j,k) + rk3coef * e12p(i,j,k)
+
+        e120(i,j,k) = max(e12min,e120(i,j,k))
+        e12m(i,j,k) = max(e12min,e12m(i,j,k))
+
+        do n=1,nsv
+          sv0(i,j,k,n) = svm(i,j,k,n) + rk3coef * svp(i,j,k,n)
+        end do
+
+      end do
+    end do
+  end do
+endif
 
   up=0.
   vp=0.
