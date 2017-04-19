@@ -11,33 +11,52 @@ if("$ENV{SYST}" STREQUAL "HUYGENS")
   set(CMAKE_Fortran_FLAGS "-qfree=F90 -qrealsize=8  -qwarn64 -qflttrap=en:ov:zero:inv:imp -qflag=w:e" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O4 -qnoipa -qstrict=none:exceptions" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-O2 -g -qfullpath -C -qflttrp=enable:nanq:overflow:zerodivide -qsigtrap -qinitauto=ff" CACHE STRING "")
+
 elseif("$ENV{SYST}" STREQUAL "CARTESIUS")
   set(CMAKE_Fortran_COMPILER "mpiifort")
   set(CMAKE_Fortran_FLAGS "-r8 -ftz -extend_source" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O3" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE STRING "")
+
 elseif("$ENV{SYST}" STREQUAL "localpc_ifort")
   set(CMAKE_Fortran_COMPILER "mpif90")
   set(CMAKE_Fortran_FLAGS "-r8 -ftz -extend_source" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O3" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE STRING "")
+
 elseif("$ENV{SYST}" STREQUAL "HYDRA")
   set(CMAKE_Fortran_COMPILER "mpiifort")
   set(CMAKE_Fortran_FLAGS "-r8 -ftz -extend_source" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O3" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE
   STRING "")
+
 elseif("$ENV{SYST}" STREQUAL "ECMWF")
   set(CMAKE_Fortran_COMPILER "ftn")
   set(CMAKE_Fortran_FLAGS "-s real64" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O3" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-g -R b -K trap=fp" CACHE STRING "")
+
+elseif("$ENV{SYST}" STREQUAL "LISA-intel")
+  set(CMAKE_Fortran_COMPILER "mpif90")
+  set(CMAKE_Fortran_FLAGS "-r8 -ftz -extend_source" CACHE STRING "")
+  set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -xHost -no-prec-div" CACHE STRING "")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE STRING "")
+
 else()
   set(CMAKE_Fortran_COMPILER "mpif90")
   set(CMAKE_Fortran_FLAGS "-finit-real=nan -W -Wall -fdefault-real-8 -ffree-line-length-none" CACHE STRING "")
   set (CMAKE_Fortran_FLAGS_RELEASE "-funroll-all-loops -fno-f2c -Ofast -march=native -g" CACHE STRING "")
   set (CMAKE_Fortran_FLAGS_DEBUG   "-fbounds-check -fbacktrace -fno-f2c -O0 -g -ffpe-trap=invalid,zero,overflow" CACHE STRING "")
 endif()
+
+MESSAGE(STATUS "CMAKE_Fortran_COMPILER " ${CMAKE_Fortran_COMPILER})
+MESSAGE(STATUS "CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS})
+MESSAGE(STATUS "CMAKE_Fortran_FLAGS_RELEASE " ${CMAKE_Fortran_FLAGS_RELEASE})
+MESSAGE(STATUS "CMAKE_Fortran_FLAGS_DEBUG " ${CMAKE_Fortran_FLAGS_DEBUG})
+
+
+
 
 ## Project parameters
 PROJECT(DALES Fortran)
