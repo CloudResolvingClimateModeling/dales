@@ -204,9 +204,20 @@ if(rk3step /= 3) then
   thl0(:,2:j1, 1:kmax) = thlm(:,2:j1, 1:kmax) + rk3coef * thlp(:,2:j1, 1:kmax)
   qt0(:,2:j1, 1:kmax)  = qtm(:,2:j1, 1:kmax)  + rk3coef * qtp(:,2:j1, 1:kmax)
 
-  ! get rid of negative qt, measure how much was lost
+  ! detect negative qt
   negqt = sum(qt0, qt0 < 0)
-  !where (qt0 < 0) qt0 = 0
+  
+  if (negqt > 0) then
+     write (*,*) 'Amount of negative qt0 found:', negqt
+     write (*,*) 'Amount of qt0 in total', sum(qt0)
+     do k=1,kmax
+        i = count(qt0 < 0)
+        if (i > 0) then
+           write(*,*) i, 'cells with qt0 < 0 at height ', k
+        endif
+     enddo
+     !where (qt0 < 0) qt0 = 0
+  endif
   
   e120(:,2:j1, 1:kmax) =  max(e12min, e12m(:,2:j1, 1:kmax) + rk3coef * e12p(:,2:j1, 1:kmax))
   !e120 = max(e12min,e120) combined with previous op
@@ -223,8 +234,19 @@ else ! store result also in um etc !TODO try u0 = um+, um = u0
   thl0 = thlm
   qtm  = qtm  + rk3coef * qtp
 
-  ! get rid of negative qt, measure how much was lost
+  ! detect negative qt
   negqt = sum(qtm, qtm < 0)
+    if (negqt > 0) then
+     write (*,*) 'Amount of negative qtm found:', negqt
+     write (*,*) 'Amount of qtm in total', sum(qtm)
+     do k=1,kmax
+        i = count(qtm < 0)
+        if (i > 0) then
+           write(*,*) i, 'cells with qtm < 0 at height ', k
+        endif
+     enddo
+     !where (qt0 < 0) qt0 = 0
+  endif
   !where (qtm < 0) qtm = 0
   
   qt0  = qtm
@@ -254,6 +276,5 @@ endif
 !    e12m = e120
 !    svm = sv0
 !  end if
-  write (*,*) 'Amount of qt thrown away:', negqt
-  write (*,*) 'Amount of qt in total', sum(qt0)
+
 end subroutine tstep_integrate
