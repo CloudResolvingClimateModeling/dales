@@ -207,13 +207,13 @@ if(rk3step /= 3) then
   ! detect negative qt
   negqt = sum(qt0, qt0 < 0)
   
-  if (negqt > 0) then
+  if (negqt < 0) then
      write (*,*) 'Amount of negative qt0 found:', negqt
      write (*,*) 'Amount of qt0 in total', sum(qt0)
      do k=1,kmax
         i = count(qt0 < 0)
         if (i > 0) then
-           write(*,*) i, 'cells with qt0 < 0 at height ', k
+           write(*,*) i, 'cells with qt0 < 0 at height ', k, 'total negative qt:', sum(qt0(:,:,k), qt0(:,:,k) < 0)
         endif
      enddo
      !where (qt0 < 0) qt0 = 0
@@ -236,13 +236,13 @@ else ! store result also in um etc !TODO try u0 = um+, um = u0
 
   ! detect negative qt
   negqt = sum(qtm, qtm < 0)
-    if (negqt > 0) then
+    if (negqt < 0) then
      write (*,*) 'Amount of negative qtm found:', negqt
      write (*,*) 'Amount of qtm in total', sum(qtm)
      do k=1,kmax
         i = count(qtm < 0)
         if (i > 0) then
-           write(*,*) i, 'cells with qtm < 0 at height ', k
+           write(*,*) i, 'cells with qtm < 0 at height ', k,  'total negative qt:', sum(qtm(:,:,k), qtm(:,:,k) < 0)
         endif
      enddo
      !where (qt0 < 0) qt0 = 0
