@@ -582,7 +582,7 @@ subroutine icethermo0
   !! \author Steef B\"oing
   ! refactored with table lookup in a function - Fredrik Jansson 2017
   
-  use modglobal, only : i1,j1,k1,rlv,cp
+  use modglobal, only : i1,j1,kmax,rlv,cp
   use modfields, only : qvsl,qvsi,qt0,thl0,exnf,presf,tmp0,ql0,esl
   implicit none
   
@@ -595,7 +595,7 @@ subroutine icethermo0
   !     calculation of T with Newton-Raphson method
   !     first guess is Tnr=tl
   nitert = 0              ! max number of iterations needed
-  do k=1,k1
+  do k=1,kmax  !upper limit was k1 - can be uninitialized
      do j=2,j1
         do i=2,i1
            ! first guess for temperature

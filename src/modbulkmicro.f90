@@ -132,15 +132,18 @@ module modbulkmicro
     integer :: i,j,k
     real :: qrtest,nrtest
 
-    do j=2,j1
-    do i=2,i1
-    do k=1,k1
-      !write (6,*) myid,i,j,k,sv0(i,j,k,inr),sv0(i,j,k,iqr)
-      Nr  (i,j,k) = sv0(i,j,k,inr)
-      qr  (i,j,k) = sv0(i,j,k,iqr)
-    enddo
-    enddo
-    enddo
+    Nr = sv0(:,:,:,inr)
+    qr = sv0(:,:,:,iqr)
+    !do j=2,j1   !note this leaves ghost cells un-initialized 
+    !do i=2,i1   !they are accessed in the warning print about negative qt
+    !do k=1,k1
+    !  !write (6,*) myid,i,j,k,sv0(i,j,k,inr),sv0(i,j,k,iqr)
+    !  Nr  (i,j,k) = sv0(i,j,k,inr)
+    !  qr  (i,j,k) = sv0(i,j,k,iqr)
+    !enddo
+    !enddo
+    !enddo
+ 
     Nrp    = 0.0
     qrp    = 0.0
     thlpmcr = 0.0

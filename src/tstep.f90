@@ -205,18 +205,18 @@ if(rk3step /= 3) then
   qt0(:,2:j1, 1:kmax)  = qtm(:,2:j1, 1:kmax)  + rk3coef * qtp(:,2:j1, 1:kmax)
 
   ! detect negative qt
-  negqt = sum(qt0, qt0 < 0)
+  negqt = sum(qt0(2:i1,2:j1,1:kmax), qt0 < 0)
   
   if (negqt < 0) then
      write (*,*) 'Amount of negative qt0 found:', negqt
-     write (*,*) 'Amount of qt0 in total', sum(qt0)
+     write (*,*) 'Amount of qt0 in total', sum(qt0(2:i1,2:j1,1:kmax))
      do k=1,kmax
-        i = count(qt0 < 0)
+        i = count(qt0(2:i1,2:j1,1:kmax) < 0)
         if (i > 0) then
-           write(*,*) i, 'cells with qt0 < 0 at height ', k, 'total negative qt:', sum(qt0(:,:,k), qt0(:,:,k) < 0)
+           write(*,*) i, 'cells with qt0 < 0 at height ', k, 'total negative qt:', sum(qt0(2:i1,2:j1,k), qt0(2:i1,2:j1,k) < 0)
         endif
      enddo
-     !where (qt0 < 0) qt0 = 0
+     where (qt0(2:i1,2:j1, 1:kmax) < 0) qt0 = 0
   endif
   
   e120(:,2:j1, 1:kmax) =  max(e12min, e12m(:,2:j1, 1:kmax) + rk3coef * e12p(:,2:j1, 1:kmax))
@@ -235,19 +235,19 @@ else ! store result also in um etc !TODO try u0 = um+, um = u0
   qtm  = qtm  + rk3coef * qtp
 
   ! detect negative qt
-  negqt = sum(qtm, qtm < 0)
+  negqt = sum(qtm(2:i1,2:j1,1:kmax), qtm < 0)
     if (negqt < 0) then
      write (*,*) 'Amount of negative qtm found:', negqt
-     write (*,*) 'Amount of qtm in total', sum(qtm)
+     write (*,*) 'Amount of qtm in total', sum(qtm(2:i1,2:j1,1:kmax))
      do k=1,kmax
-        i = count(qtm < 0)
+        i = count(qtm(2:i1,2:j1,1:kmax) < 0)
         if (i > 0) then
-           write(*,*) i, 'cells with qtm < 0 at height ', k,  'total negative qt:', sum(qtm(:,:,k), qtm(:,:,k) < 0)
+           write(*,*) i, 'cells with qtm < 0 at height ', k,  'total negative qt:', sum(qtm(2:i1,2:j1,k), qtm(2:i1,2:j1,k) < 0)
         endif
      enddo
-     !where (qt0 < 0) qt0 = 0
+     where (qtm(2:i1,2:j1, 1:kmax) < 0) qtm = 0
   endif
-  !where (qtm < 0) qtm = 0
+
   
   qt0  = qtm
   e12m = max(e12min, e12m + rk3coef * e12p)
