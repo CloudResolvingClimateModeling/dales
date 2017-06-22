@@ -3,6 +3,7 @@
 
 !>
 !!  Calculates the other forces and sources in the equations.
+!!  Option available to use tendencies from other meteo datasets
 !>
 !!  This includes the large scale forcings, the coriolis and the subsidence
 !!  \author Pier Siebesma, K.N.M.I.
@@ -10,6 +11,7 @@
 !!  \author Chiel van Heerwaarden, Wageningen U.R.
 !!  \author Thijs Heus,MPI-M
 !!  \author Steef Böing, TU Delft
+!!  \author Jason Williams KNMI
 !!  \par Revision list
 !!  \todo Documentation
 !  This file is part of DALES.
@@ -220,10 +222,11 @@ contains
 !                                                                 |
 !-----------------------------------------------------------------|
 
+  use modtimedep,only : ltimedep
   use modglobal, only : i1,j1,kmax,dzh,nsv,lmomsubs
   use modfields, only : up,vp,thlp,qtp,svp,&
                         whls, u0av,v0av,thl0,qt0,sv0,u0,v0,&
-                        dudxls,dudyls,dvdxls,dvdyls,dthldxls,dthldyls,dqtdxls,dqtdyls,dqtdtls
+                        uadv,vadv,thlpcar,dqtdtls
   implicit none
 
   integer i,j,k,n,kp,km
@@ -255,10 +258,26 @@ contains
           svp(i,j,1,n) = svp(i,j,1,n)-subs_sv
         enddo
       endif
-      thlp(i,j,1) = thlp(i,j,1) -u0av(1)*dthldxls(1)-v0av(1)*dthldyls(1)-subs_thl
-      qtp(i,j,1)  = qtp (i,j,1) -u0av(1)*dqtdxls (1)-v0av(1)*dqtdyls (1)-subs_qt +dqtdtls(1)
-      up  (i,j,1) = up  (i,j,1) -u0av(1)*dudxls  (1)-v0av(1)*dudyls  (1)-subs_u
-      vp  (i,j,1) = vp  (i,j,1) -u0av(1)*dvdxls  (1)-v0av(1)*dvdyls  (1)-subs_v
+   !
+   !  JEW : both dqtdxls and dqtdyls are zero therefore update calculations
+   !
+   !   thlp(i,j,1) = thlp(i,j,1) -u0av(1)*dthldxls(1)-v0av(1)*dthldyls(1)-subs_thl
+   !   qtp(i,j,1)  = qtp (i,j,1) -u0av(1)*dqtdxls (1)-v0av(1)*dqtdyls (1)-subs_qt +dqtdtls(1)
+   !   up  (i,j,1) = up  (i,j,1) -u0av(1)*dudxls  (1)-v0av(1)*dudyls  (1)-subs_u
+   !   vp  (i,j,1) = vp  (i,j,1) -u0av(1)*dvdxls  (1)-v0av(1)*dvdyls  (1)-subs_v
+   !
+    if( ltimedep ) then
+      thlp(i,j,1) = thlp(i,j,1) + thlpcar(1) - subs_thl
+      qtp(i,j,1)  = qtp (i,j,1) + dqtdtls(1) - subs_qt 
+      up (i,j,1)  = up  (i,j,1) + uadv(1) -subs_u
+      vp (i,j,1)  = vp  (i,j,1) + vadv(1) -subs_v
+    endif
+    if( .not. ltimedep) then
+      thlp(i,j,1) = thlp(i,j,1) -subs_thl
+      qtp(i,j,1)  = qtp (i,j,1) -subs_qt
+      up (i,j,1)  = up  (i,j,1) -subs_u
+      vp (i,j,1)  = vp  (i,j,1) -subs_v
+    endif
     end do
   end do
 
@@ -293,10 +312,23 @@ contains
           enddo
         endif
 
-        thlp(i,j,k) = thlp(i,j,k)-u0av(k)*dthldxls(k)-v0av(k)*dthldyls(k)-subs_thl
-        qtp (i,j,k) = qtp (i,j,k)-u0av(k)*dqtdxls (k)-v0av(k)*dqtdyls (k)-subs_qt+dqtdtls(k)
-        up  (i,j,k) = up  (i,j,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)-subs_u
-        vp  (i,j,k) = vp  (i,j,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)-subs_v
+!        thlp(i,j,k) = thlp(i,j,k)-u0av(k)*dthldxls(k)-v0av(k)*dthldyls(k)-subs_thl
+!        qtp (i,j,k) = qtp (i,j,k)-u0av(k)*dqtdxls (k)-v0av(k)*dqtdyls (k)-subs_qt+dqtdtls(k)
+!        up  (i,j,k) = up  (i,j,k)-u0av(k)*dudxls  (k)-v0av(k)*dudyls  (k)-subs_u
+!        vp  (i,j,k) = vp  (i,j,k)-u0av(k)*dvdxls  (k)-v0av(k)*dvdyls  (k)-subs_v
+
+       if( ltimedep ) then
+         thlp(i,j,k) = thlp(i,j,k) + thlpcar(k) - subs_thl
+         qtp(i,j,k)  = qtp (i,j,k) + dqtdtls(k) - subs_qt 
+         up (i,j,k)  = up  (i,j,k) + uadv(k) -subs_u
+         vp (i,j,k)  = vp  (i,j,k) + vadv(k) -subs_v
+       endif
+       if( .not. ltimedep) then
+         thlp(i,j,k) = thlp(i,j,k) -subs_thl
+         qtp(i,j,k)  = qtp (i,j,k) -subs_qt
+         up (i,j,k)  = up  (i,j,k) -subs_u
+         vp (i,j,k)  = vp  (i,j,k) -subs_v
+       endif
       enddo
     enddo
   enddo
