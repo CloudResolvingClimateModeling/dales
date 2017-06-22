@@ -75,6 +75,8 @@ contains
     use mpi,               only : MPI_INTEGER,MPI_LOGICAL,MPI_CHARACTER
     use modmpi,            only : initmpi,commwrld,my_real,myid,nprocx,nprocy,mpierr
 
+    use modtestbed,        only : inittestbed
+
     implicit none
     integer :: ierr
     character(256), optional, intent(in) :: path
@@ -181,13 +183,13 @@ contains
     call MPI_BCAST(wtsurf     ,1,MY_REAL   ,0,commwrld,mpierr)
     call MPI_BCAST(wqsurf     ,1,MY_REAL   ,0,commwrld,mpierr)
     call MPI_BCAST(wsvsurf(1:nsv),nsv,MY_REAL   ,0,commwrld,mpierr)
-    call MPI_BCAST(ps         ,1,MY_REAL   ,0,commwrld,mpierr)
-    call MPI_BCAST(thls       ,1,MY_REAL   ,0,commwrld,mpierr)
-    call MPI_BCAST(chi_half   ,1,MY_REAL   ,0,commwrld,mpierr)
+    call MPI_BCAST(ps         ,1,MY_REAL    ,0,commwrld,mpierr)
+    call MPI_BCAST(thls       ,1,MY_REAL    ,0,commwrld,mpierr)
+    call MPI_BCAST(chi_half   ,1,MY_REAL    ,0,commwrld,mpierr)
     call MPI_BCAST(lmoist     ,1,MPI_LOGICAL,0,commwrld,mpierr)
     call MPI_BCAST(lcoriol    ,1,MPI_LOGICAL,0,commwrld,mpierr)
     call MPI_BCAST(igrw_damp  ,1,MPI_INTEGER,0,commwrld,mpierr)
-    call MPI_BCAST(geodamptime,1,MY_REAL   ,0,commwrld,mpierr)
+    call MPI_BCAST(geodamptime,1,MY_REAL    ,0,commwrld,mpierr)
     call MPI_BCAST(lforce_user,1,MPI_LOGICAL,0,commwrld,mpierr)
     call MPI_BCAST(lmomsubs   ,1,MPI_LOGICAL,0,commwrld,mpierr)
     call MPI_BCAST(ltimedep   ,1,MPI_LOGICAL,0,commwrld,mpierr)
@@ -243,7 +245,7 @@ contains
     ! Allocate and initialize core modules
     call initglobal
     call initfields
-
+    call inittestbed    !reads initial profiles from HARMONIE output file, to be used in readinitfiles
     call initboundary
     call initthermodynamics
     call initradiation
@@ -253,9 +255,7 @@ contains
     call initmicrophysics
     call readinitfiles ! moved to obtain the correct btime for the timedependent forcings in case of a warmstart
     call inittimedep !depends on modglobal,modfields, modmpi, modsurf, modradiation
-
     call checkinitvalues
-
 
   end subroutine startup
 
@@ -313,7 +313,6 @@ contains
 
   !Check Namroptions
 
-
     if (runtime < 0)stop 'runtime out of range/not set'
     if (dtmax < 0)  stop 'dtmax out of range/not set '
     if (ps < eps1)     stop 'psout of range/not set'
@@ -352,8 +351,7 @@ contains
   subroutine readinitfiles
     use modfields,         only : u0,v0,w0,um,vm,wm,thlm,thl0,thl0h,qtm,qt0,qt0h,&
                                   ql0,ql0h,thv0h,sv0,svm,e12m,e120,&
-                                  dudxls,dudyls,dvdxls,dvdyls,dthldxls,dthldyls,&
-                                  dqtdxls,dqtdyls,dqtdtls,dpdxl,dpdyl,&
+                                  dqtdtls,dpdxl,dpdyl,&
                                   wfls,whls,ug,vg,uprof,vprof,thlprof, qtprof,e12prof, svprof,&
                                   v0av,u0av,qt0av,ql0av,thl0av,sv0av,exnf,exnh,presf,presh,rhof,&
                                   thlpcar,thvh,thvf
@@ -363,15 +361,16 @@ contains
                                   ijtot,cu,cv,e12min,dzh,cexpnr,ifinput,lwarmstart,itrestart,&
                                   trestart, ladaptive,llsadv,tnextrestart
     use modsubgrid,        only : ekm,ekh
-    use modsurfdata,       only : wsvsurf, &
-                                  thls,tskin,tskinm,tsoil,tsoilm,phiw,phiwm,Wl,Wlm,thvs,qts,isurf,svs,obl,oblav,&
-                                  thvs_patch,lhetero,qskin
+    use modsurfdata,       only : wsvsurf,thls,tskin,tskinm,tsoil,tsoilm,phiw,phiwm,Wl,Wlm,thvs,qts,isurf,svs,obl,oblav,&
+                                  thvs_patch,lhetero,qskin,ps
     use modsurface,        only : surface,qtsurf,dthldz
     use modboundary,       only : boundary
     use modmpi,            only : slabsum,myid,comm3d,mpierr,my_real
     use modthermodynamics, only : thermodynamics,calc_halflev
     use moduser,           only : initsurf_user
 
+    use modtestbed,        only : ltestbed,tb_ps,tb_thls,tb_qts,tb_thl,tb_qt,tb_u,tb_v,tb_w,tb_ug,tb_vg,&
+                                  tb_uadv,tb_vadv,tb_qtadv,tb_thladv
     integer i,j,k,n
 
     real, allocatable :: height(:), th0av(:)
@@ -382,7 +381,6 @@ contains
     allocate (height(k1))
     allocate (th0av(k1))
     allocate(thv0(2-ih:i1+ih,2-jh:j1+jh,k1))
-
 
     if (.not. lwarmstart) then
 
@@ -399,12 +397,30 @@ contains
       dt  = floor(rdt/tres)
       timee = 0
       if (myid==0) then
+
+        if (ltestbed) then
+          do k=1,kmax
+            height (k) = zf(k)
+            thlprof(k) = tb_thl(2,k)
+            qtprof (k) = tb_qt(2,k)
+            uprof  (k) = tb_u(2,k)
+            vprof  (k) = tb_v(2,k)
+            e12prof(k) = 0.5
+          end do
+
+          ps         = tb_ps(2)
+          qts        = tb_qts(2)
+          thls       = tb_thls(2)       
+        endif
+
+       if( .not. ltestbed) then
+
         open (ifinput,file='prof.inp.'//cexpnr)
-        read (ifinput,'(a80)') chmess
+        read (ifinput,'(a100)') chmess
         write(*,     '(a80)') chmess
         read (ifinput,'(a80)') chmess
 
-        do k=1,kmax
+         do k=1,kmax
           read (ifinput,*) &
                 height (k), &
                 thlprof(k), &
@@ -412,11 +428,11 @@ contains
                 uprof  (k), &
                 vprof  (k), &
                 e12prof(k)
-        end do
+         end do
 
-        close(ifinput)
-        write(*,*) 'height    thl      qt         u      v     e12'
-        do k=kmax,1,-1
+         close(ifinput)
+         write(*,*) 'height    thl      qt         u      v     e12'
+         do k=kmax,1,-1
           write (*,'(f7.1,f8.1,e12.4,3f7.1)') &
                 height (k), &
                 thlprof(k), &
@@ -424,48 +440,52 @@ contains
                 uprof  (k), &
                 vprof  (k), &
                 e12prof(k)
+          end do
 
-        end do
-
-        if (minval(e12prof(1:kmax)) < e12min) then
+         if (minval(e12prof(1:kmax)) < e12min) then
           write(*,*)  'e12 value is zero (or less) in prof.inp'
           do k=1,kmax
             e12prof(k) = max(e12prof(k),e12min)
           end do
-        end if
-
-      end if ! end if myid==0
-    ! MPI broadcast numbers reading
+         end if
+       end if ! ltestbed
+      end if ! myid==0
+    !
+    ! MPI broadcast initial profile values
+    !
       call MPI_BCAST(thlprof,kmax,MY_REAL   ,0,comm3d,mpierr)
       call MPI_BCAST(qtprof ,kmax,MY_REAL   ,0,comm3d,mpierr)
       call MPI_BCAST(uprof  ,kmax,MY_REAL   ,0,comm3d,mpierr)
       call MPI_BCAST(vprof  ,kmax,MY_REAL   ,0,comm3d,mpierr)
       call MPI_BCAST(e12prof,kmax,MY_REAL   ,0,comm3d,mpierr)
+
       do k=1,kmax
-      do j=1,j2
-      do i=1,i2
-        thl0(i,j,k) = thlprof(k)
-        thlm(i,j,k) = thlprof(k)
-        qt0 (i,j,k) = qtprof (k)
-        qtm (i,j,k) = qtprof (k)
-        u0  (i,j,k) = uprof  (k) - cu
-        um  (i,j,k) = uprof  (k) - cu
-        v0  (i,j,k) = vprof  (k) - cv
-        vm  (i,j,k) = vprof  (k) - cv
-        w0  (i,j,k) = 0.0
-        wm  (i,j,k) = 0.0
-        e120(i,j,k) = e12prof(k)
-        e12m(i,j,k) = e12prof(k)
-        ekm (i,j,k) = 0.0
-        ekh (i,j,k) = 0.0
+       do j=1,j2
+        do i=1,i2
+         thl0(i,j,k) = thlprof(k)
+         thlm(i,j,k) = thlprof(k)
+         qt0 (i,j,k) = qtprof (k)
+         qtm (i,j,k) = qtprof (k)
+         u0  (i,j,k) = uprof  (k) - cu
+         um  (i,j,k) = uprof  (k) - cu
+         v0  (i,j,k) = vprof  (k) - cv
+         vm  (i,j,k) = vprof  (k) - cv
+         w0  (i,j,k) = 0.0
+         wm  (i,j,k) = 0.0
+         e120(i,j,k) = e12prof(k)
+         e12m(i,j,k) = e12prof(k)
+         ekm (i,j,k) = 0.0
+         ekh (i,j,k) = 0.0
+        end do
+       end do
       end do
-      end do
-      end do
+
     !---------------------------------------------------------------
     !  1.2 randomnize fields
     !---------------------------------------------------------------
 
       krand  = min(krand,kmax)
+
       do k = 1,krand
         call randomnize(qtm ,k,randqt ,irandom,ih,jh)
         call randomnize(qt0 ,k,randqt ,irandom,ih,jh)
@@ -504,9 +524,12 @@ contains
         end if
       end if ! end if myid==0
 
+      svprof(:,:) = 1.0
+
       call MPI_BCAST(wsvsurf,nsv   ,MY_REAL   ,0,comm3d,mpierr)
 
       call MPI_BCAST(svprof ,k1*nsv,MY_REAL   ,0,comm3d,mpierr)
+
       do k=1,kmax
         do j=1,j2
           do i=1,i2
@@ -532,8 +555,10 @@ contains
       case(2)
         tskin  = thls
       case(3,4)
+      if(.not. ltestbed) then
         thls = thlprof(1)
         qts  = qtprof(1)
+      endif
         tskin  = thls
         qskin  = qts
       case(10)
@@ -584,21 +609,21 @@ contains
       exnh = (presh/pref0)**(rd/cp)
 
       do  j=2,j1
-      do  i=2,i1
-      do  k=2,k1
+       do  i=2,i1
+        do  k=2,k1
         thv0h(i,j,k) = (thl0h(i,j,k)+rlv*ql0h(i,j,k)/(cp*exnh(k))) &
                       *(1+(rv/rd-1)*qt0h(i,j,k)-rv/rd*ql0h(i,j,k))
-      end do
-      end do
+        end do
+       end do
       end do
 
       do  j=2,j1
-      do  i=2,i1
-      do  k=1,k1
+       do  i=2,i1
+        do  k=1,k1
         thv0(i,j,k) = (thl0(i,j,k)+rlv*ql0(i,j,k)/(cp*exnf(k))) &
                       *(1+(rv/rd-1)*qt0(i,j,k)-rv/rd*ql0(i,j,k))
-      end do
-      end do
+        end do
+       end do
       end do
 
       thvh=0.
@@ -651,6 +676,22 @@ contains
 
 
     if(myid==0)then
+
+      if (ltestbed) then
+
+          write(*,*) 'readinitfiles: testbed mode: profiles for ls forcing obtained from HARMONIE input'
+          
+          do k=1,kmax
+            height (k) = zf(k)
+            ug     (k) = tb_ug(2,k)
+            vg     (k) = tb_vg(2,k)
+            wfls   (k) = tb_w(2,k)
+            dqtdtls(k) = tb_qtadv(2,k)
+            thlpcar(k) = tb_thladv(2,k)
+          end do
+
+      else     
+
       open (ifinput,file='lscale.inp.'//cexpnr)
       read (ifinput,'(a80)') chmess
       read (ifinput,'(a80)') chmess
@@ -662,10 +703,9 @@ contains
               ug     (k), &
               vg     (k), &
               wfls   (k), &
-              dqtdxls(k), &
-              dqtdyls(k), &
               dqtdtls(k), &
               thlpcar(k)
+              zf(k) = height(k)
       end do
       close(ifinput)
 
@@ -675,12 +715,10 @@ contains
               ug     (k), &
               vg     (k), &
               wfls   (k), &
-              dqtdxls(k), &
-              dqtdyls(k), &
               dqtdtls(k), &
               thlpcar(k)
       end do
-
+     end if ! ltestbed
 
     end if ! end myid==0
 
@@ -689,8 +727,6 @@ contains
     call MPI_BCAST(ug       ,kmax,MY_REAL   ,0,comm3d,mpierr)
     call MPI_BCAST(vg       ,kmax,MY_REAL   ,0,comm3d,mpierr)
     call MPI_BCAST(wfls     ,kmax,MY_REAL   ,0,comm3d,mpierr)
-    call MPI_BCAST(dqtdxls  ,kmax,MY_REAL   ,0,comm3d,mpierr)
-    call MPI_BCAST(dqtdyls  ,kmax,MY_REAL   ,0,comm3d,mpierr)
     call MPI_BCAST(dqtdtls  ,kmax,MY_REAL   ,0,comm3d,mpierr)
     call MPI_BCAST(thlpcar  ,kmax,MY_REAL   ,0,comm3d,mpierr)
 
@@ -721,12 +757,6 @@ contains
     if (llsadv) then
       if (myid==0) stop 'llsadv should not be used anymore. Large scale gradients were calculated in a non physical way (and lmomsubs had to be set to true to retain conservation of mass)'
     end if
-    dudxls   = 0.0
-    dudyls   = 0.0
-    dvdxls   = 0.0
-    dvdyls   = 0.0
-    dthldxls = 0.0
-    dthldyls = 0.0
 
     idtmax = floor(dtmax/tres)
     btime   = timee
@@ -739,7 +769,6 @@ contains
     itrestart = floor(trestart/tres)
     tnextrestart = btime + itrestart
     deallocate (height,th0av,thv0)
-
 
   end subroutine readinitfiles
 
