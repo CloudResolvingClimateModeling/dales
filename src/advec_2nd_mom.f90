@@ -8,9 +8,9 @@
 !
 ! TODO: make sure no unnecessary divisins done in inner loop
 
-subroutine advecu_2nd_mom_eq()
+subroutine advec_2nd_mom_eq()
 
-  use modglobal, only : i1,ih,j1,jh,k1,kmax,dxiq,dyiq,dziq,dzf,dzh,leq
+  use modglobal, only : i1,ih,j1,jh,k1,kmax,dxiq,dyiq,dziq,dzf,dzh
   use modfields, only : u0, v0, w0, up, vp, wp, rhobf, rhobh
 
   implicit none
@@ -109,15 +109,13 @@ subroutine advecu_2nd_mom_eq()
   end do
 
 
-end subroutine advecu_2nd_mom_eq
+end subroutine advec_2nd_mom_eq
 
 
+subroutine advec_2nd_mom_neq()
 
-
-subroutine advecu_2nd_mom_neq(putin, putout)
-
-  use modglobal, only : i1,ih,j1,jh,k1,kmax,dxiq,dyiq,dziq,dzf,dzh,leq
-  use modfields, only : u0, v0, w0, rhobf, rhobh
+  use modglobal, only : i1,ih,j1,jh,k1,kmax,dxiq,dyiq,dziq,dzf,dzh
+  use modfields, only : u0, v0, w0, up, vp, wp, rhobf, rhobh
   implicit none
 
 
@@ -223,6 +221,7 @@ subroutine advecu_2nd_mom_neq(putin, putout)
      end do
   end do
 
-end subroutine advecu_2nd_mom_neq
+end subroutine advec_2nd_mom_neq
+
 
 

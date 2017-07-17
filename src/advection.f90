@@ -28,7 +28,7 @@
 subroutine advection
 
   use modglobal,  only : lmoist, nsv, iadv_mom,iadv_tke,iadv_thl,iadv_qt,iadv_sv, &
-                         iadv_cd2,iadv_5th,iadv_52,iadv_cd6,iadv_62,iadv_kappa,iadv_upw,iadv_hybrid,iadv_null
+                         iadv_cd2,iadv_5th,iadv_52,iadv_cd6,iadv_62,iadv_kappa,iadv_upw,iadv_hybrid,iadv_null, leq
   use modfields,  only : u0,up,v0,vp,w0,wp,e120,e12p,thl0,thlp,qt0,qtp,sv0,svp
   use modsubgrid, only : lsmagorinsky
   use advec_hybrid, only : advecc_hybrid
@@ -37,9 +37,14 @@ subroutine advection
 
   select case(iadv_mom)
     case(iadv_cd2)
-      call advecu_2nd(u0,up)
-      call advecv_2nd(v0,vp)
-      call advecw_2nd(w0,wp)
+      !call advecu_2nd(u0,up)
+      !call advecv_2nd(v0,vp)
+      !call advecw_2nd(w0,wp)
+      if (leq) then 
+         call  advec_2nd_mom_eq()
+      else
+         call  advec_2nd_mom_neq()
+      endif
     case(iadv_5th)
       call advecu_5th(u0,up)
       call advecv_5th(v0,vp)
