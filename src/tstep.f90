@@ -174,27 +174,37 @@ subroutine tstep_integrate
   rk3coef = rdt / (4. - dble(rk3step))
   wp_store = wp
 
-  do k=1,kmax
-    do j=2,j1
-      do i=2,i1
+  ! do k=1,kmax
+  !   do j=2,j1
+  !     do i=2,i1
 
-        u0(i,j,k)   = um(i,j,k)   + rk3coef * up(i,j,k)
-        v0(i,j,k)   = vm(i,j,k)   + rk3coef * vp(i,j,k)
-        w0(i,j,k)   = wm(i,j,k)   + rk3coef * wp(i,j,k)
-        thl0(i,j,k) = thlm(i,j,k) + rk3coef * thlp(i,j,k)
-        qt0(i,j,k)  = qtm(i,j,k)  + rk3coef * qtp(i,j,k)
-        e120(i,j,k) = e12m(i,j,k) + rk3coef * e12p(i,j,k)
+  !       u0(i,j,k)   = um(i,j,k)   + rk3coef * up(i,j,k)
+  !       v0(i,j,k)   = vm(i,j,k)   + rk3coef * vp(i,j,k)
+  !       w0(i,j,k)   = wm(i,j,k)   + rk3coef * wp(i,j,k)
+  !       thl0(i,j,k) = thlm(i,j,k) + rk3coef * thlp(i,j,k)
+  !       qt0(i,j,k)  = qtm(i,j,k)  + rk3coef * qtp(i,j,k)
+  !       e120(i,j,k) = e12m(i,j,k) + rk3coef * e12p(i,j,k)
 
-        e120(i,j,k) = max(e12min,e120(i,j,k))
-        e12m(i,j,k) = max(e12min,e12m(i,j,k))
+  !       e120(i,j,k) = max(e12min,e120(i,j,k))
+  !       e12m(i,j,k) = max(e12min,e12m(i,j,k))
 
-        do n=1,nsv
-          sv0(i,j,k,n) = svm(i,j,k,n) + rk3coef * svp(i,j,k,n)
-        end do
+  !       do n=1,nsv
+  !         sv0(i,j,k,n) = svm(i,j,k,n) + rk3coef * svp(i,j,k,n)
+  !       end do
 
-      end do
-    end do
-  end do
+  !     end do
+  !   end do
+  ! end do
+
+  u0   = um   + rk3coef * up
+  v0   = vm   + rk3coef * vp
+  w0   = wm   + rk3coef * wp
+  thl0 = thlm + rk3coef * thlp
+  qt0  = qtm  + rk3coef * qtp
+  sv0  = svm  + rk3coef * svp
+  e120 = max(e12min,e12m + rk3coef * e12p)
+  !e12m = max(e12min,e12m)
+ 
 
   up=0.
   vp=0.

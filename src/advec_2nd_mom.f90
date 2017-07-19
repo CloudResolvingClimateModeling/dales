@@ -6,7 +6,6 @@
 !advecu_2nd_mom_eq()  - equidistant grid
 !advecu_2nd_mom_neq() - nonequidistant grid
 !
-! TODO: make sure no unnecessary divisins done in inner loop
 
 subroutine advec_2nd_mom_eq()
 
