@@ -31,11 +31,18 @@ elseif("$ENV{SYST}" STREQUAL "HYDRA")
   set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE
   STRING "")
 
-elseif("$ENV{SYST}" STREQUAL "ECMWF")
+elseif("$ENV{SYST}" STREQUAL "ECMWF-cray")
   set(CMAKE_Fortran_COMPILER "ftn")
   set(CMAKE_Fortran_FLAGS "-s real64" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_RELEASE "-O3" CACHE STRING "")
   set(CMAKE_Fortran_FLAGS_DEBUG "-g -R b -K trap=fp" CACHE STRING "")
+
+elseif("$ENV{SYST}" STREQUAL "ECMWF-intel")
+  set(CMAKE_Fortran_COMPILER "ftn")
+  set(CMAKE_Fortran_FLAGS "-r8 -ftz -extend_source" CACHE STRING "")
+  set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -xHost -no-prec-div" CACHE STRING "")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-traceback -fpe1 -O0 -g -check all" CACHE
+  STRING "")
 
 elseif("$ENV{SYST}" STREQUAL "LISA-intel")
   set(CMAKE_Fortran_COMPILER "mpif90")
