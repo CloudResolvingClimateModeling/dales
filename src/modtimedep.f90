@@ -38,7 +38,7 @@ public :: inittimedep, timedep,ltimedep,exittimedep
 
 save
 ! switches for timedependent surface fluxes and large scale forcings
-  logical       :: ltimedep     = .true. !< Overall switch, input in namoptions
+  logical       :: ltimedep     = .false. !< Overall switch, input in namoptions
   logical       :: ltimedepz    = .true.  !< Switch for large scale forcings
   logical       :: ltimedepsurf = .true.  !< Switch for surface fluxes
 
@@ -56,13 +56,10 @@ save
   real, allocatable     :: vgt     (:,:)
   real, allocatable     :: wflst   (:,:)
   real, allocatable     :: dqtdtlst(:,:)
-  real, allocatable     :: dthldtlst(:,:)
   real, allocatable     :: thlpcart(:,:)
   real, allocatable     :: dudtlst (:,:)
   real, allocatable     :: dvdtlst (:,:)
   real, allocatable     :: qtproft (:,:)
-
-
 
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -76,7 +73,7 @@ contains
 
     use modtestbed,  only : ltestbed,&
                             tb_time,tb_ps,tb_qts,tb_thls,tb_wqs,tb_wts,&
-                            tb_w,tb_ug,tb_vg,tb_thl,tb_qt,&
+                            tb_w,tb_u,tb_v,tb_ug,tb_vg,tb_thl,tb_qt,&
                             tb_uadv,tb_vadv,tb_qtadv,tb_thladv
 
     implicit none
@@ -87,14 +84,19 @@ contains
     real :: dummyr
     real, allocatable, dimension (:) :: height
 
-    if (.not. ltimedep) return
-
-    if (ltestbed) then
+    if (ltestbed .and. ltimedep) then
+!
+!   The surface fluxes are updated once every hour. Use the runtime/seconds_per_hour as the index
+!
       kflux = ntnudge
       kls   = ntnudge
-    else
-      kflux = 1
-      kls   = 1
+    elseif (.not. ltimedep) then
+!
+!   No HARMONIE file then read values from file every hour of run
+!
+      kflux = ntnudge
+      kls   = ntnudge
+
     end if
 
     allocate(height(k1))
@@ -108,7 +110,6 @@ contains
     allocate(thlpcart  (k1,kls))
     allocate(qtproft   (k1,kls))
     allocate(dqtdtlst  (k1,kls))
-    allocate(dthldtlst (k1,kls))
     allocate(dudtlst   (k1,kls))
     allocate(dvdtlst   (k1,kls))
     allocate(thlst      (0:kls))
@@ -118,6 +119,7 @@ contains
 !
 !  Initialize parameters
 !
+    timeflux  = 0
     timels    = 0
     pst       = 0
     qtst      = 0
@@ -130,21 +132,17 @@ contains
     thlpcart  = 0
     qtproft   = 0
     dqtdtlst  = 0
-    dthldtlst = 0
     dudtlst   = 0
     dvdtlst   = 0
 
     if (myid==0) then
 
 !    --- load lsforcings---
-      if (ltestbed) then
+      if (ltestbed .and. ltimedep) then
 !
 !     Fill the existing arrays for the timestepping with the domian avaraged HARMONIE arrays
 !
-        write(*,*) 'inittimedep: testbed mode: data for time-dependent forcing obtained from HARMONIE output'
-      
-        timeflux(1:kflux) = tb_time
-        timels  (1:kls  ) = tb_time
+        write(*,*) 'inittimedep: testbed on: data for time-dependent forcing obtained from HARMONIE output'
 
         pst      = tb_ps
         qtst     = tb_qts
@@ -154,24 +152,26 @@ contains
         height  (:) = zf
 
         do t=1,kls
-          ugt      (:,t) = tb_ug    (t,:)
-          vgt      (:,t) = tb_vg    (t,:)
+          ugt      (:,t) = tb_u    (t,:) + (tb_ug  (t,:)/25.)
+          vgt      (:,t) = tb_v    (t,:) + (tb_vg  (t,:)/25.)
           wflst    (:,t) = tb_w     (t,:)
           qtproft  (:,t) = tb_qt    (t,:)
-          thlpcart (:,t) = tb_thl   (t,:)
+          thlpcart (:,t) = tb_thladv(t,:)
           dqtdtlst (:,t) = tb_qtadv (t,:)
-          dthldtlst(:,t) = tb_thladv(t,:)
           dudtlst  (:,t) = tb_uadv  (t,:)
           dvdtlst  (:,t) = tb_vadv  (t,:)
         end do
+     endif   ! ltestbed w/ ltimestep 
+!
+!    If no timedep then read the surface fluxes from the ascii file ls_flux.inp
+!
+      if(.not. ltimedep) then 
+       do t=1,36
+        timeflux(t) = 0.+t*3600.
+        timels  (t) = 0.+t*3600.
+       enddo
 
-      else
-
-       wqsurft  = wqsurf
-       wtsurft  = wtsurf
-       thlst    = thls
-       qtst     = qts
-       pst      = ps
+        write(*,*) 'inittimedep: Read data for time-dependent surface fluxes from : ls_flux.inp.'
 
         open(ifinput,file='ls_flux.inp.'//cexpnr)
         read(ifinput,'(a80)') chmess
@@ -180,15 +180,13 @@ contains
         write(6,*) chmess
         read(ifinput,'(a80)') chmess
         write(6,*) chmess
-
-        timeflux = 0
-        timels   = 0
-
 !      --- load fluxes---
-      t    = 0
-      ierr = 0
+        t    = 0
+        ierr = 0
       do while (timeflux(t) < (tres*real(btime)+runtime))
+
         t=t+1
+       
         read(ifinput,*, iostat = ierr) timeflux(t), wtsurft(t), wqsurft(t),thlst(t),qtst(t),pst(t)
         write(*,'(i8,6e12.4)') t,timeflux(t), wtsurft(t), wqsurft(t),thlst(t),qtst(t),pst(t)
         if (ierr < 0) then
@@ -205,13 +203,36 @@ contains
         read (ifinput,*,iostat=ierr) dummyr
       end do
       backspace (ifinput)
-!     ---load large scale forcings----
 
-       end if   !ltestbed     
+      endif
+
+       end if   !ltimedep
+
+!
+      if(ltestbed) then
+!
+! when ltestbed == .true. then load full array from HARMONIE input
+! for the surface values
+!
+        timeflux(1:kflux) = tb_time
+        timels  (1:kls  ) = tb_time
+        wqsurft  = wqsurf
+        wtsurft  = wtsurf
+        thlst    = tb_thls
+        qtst     = tb_qts
+        pst      = tb_ps
+      end if
+
+    if (.not. ltimedep) then
+     if(ltestbed) then
+       do t=1,kls
+         ugt      (:,t) = tb_u    (t,:) + (tb_ug(t,:)/25.)
+         vgt      (:,t) = tb_v    (t,:) + (tb_vg(t,:)/25.)
+      enddo
+     endif
+    endif
 
 !======================================== End surface data =============================================
-
-    end if
 
     if(ltestbed) then
 
@@ -225,8 +246,9 @@ contains
      call MPI_BCAST(ugt              ,k1*kls,MY_REAL,0,comm3d,mpierr)
      call MPI_BCAST(vgt              ,k1*kls,MY_REAL,0,comm3d,mpierr)   
      call MPI_BCAST(wflst            ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(dudtlst          ,k1*kls,MY_REAL,0,comm3d,mpierr)
+     call MPI_BCAST(dvdtlst          ,k1*kls,MY_REAL,0,comm3d,mpierr)
      call MPI_BCAST(dqtdtlst         ,k1*kls,MY_REAL,0,comm3d,mpierr)
-     call MPI_BCAST(dthldtlst        ,k1*kls,MY_REAL,0,comm3d,mpierr)
      call MPI_BCAST(thlpcart         ,k1*kls,MY_REAL,0,comm3d,mpierr)
      call MPI_BCAST(qtproft          ,k1*kls,MY_REAL,0,comm3d,mpierr)
      call MPI_BCAST(ltimedepsurf ,1,MPI_LOGICAL,0,comm3d,mpierr)
@@ -262,7 +284,7 @@ contains
 
   subroutine timedep
 
-!-----------------------------------------------------------------|dales_harm.o9510600
+!-----------------------------------------------------------------|
 !                                                                 |
 !*** *timedep*  calculates ls forcings and surface forcings       |
 !               case as a funtion of timee                        |
@@ -283,16 +305,57 @@ contains
 !                                                                 |
 !-----------------------------------------------------------------|
     use modtimedepsv, only : timedepsv
+    use modfields,    only : ug, vg, dpdxl,dpdyl
+    use modglobal,    only : rtimee,om23_gs,kmax
+    use modtestbed,   only : ltestbed
+
     implicit none
+    real fac
+    integer t,k
+
+!-----------------------------------------------------------------|
+!
+! JEW : 5-7-2017
+! DALES needs time dependent input for the vertical profiles of ug,vg
+! as pressure is currently a 1D field across the DALES domain
+! therefore derivation within DALES is not currently possible.
+! Therefore update the LS forcings using the HARMONIE values
+!
+!-----------------------------------------------------------------|
+    if (.not. ltimedep) then
+     if(ltestbed) then
+      !---- interpolate ----
+      t=1
+       do while(rtimee>timels(t))
+        t=t+1
+       end do
+       if (rtimee/=timels(1)) then
+        t=t-1
+       end if
+
+       fac = 0.0
+       fac = ( rtimee-timels(t) ) / ( timels(t+1)-timels(t) )
+     ! large scale tendencies
+       ug      = ugt     (:,t) + fac * ( ugt     (:,t+1) - ugt     (:,t) )
+       vg      = vgt     (:,t) + fac * ( vgt     (:,t+1) - vgt     (:,t) )
+
+        do k=1,kmax
+         dpdxl(k) =  om23_gs*vg(k)
+         dpdyl(k) = -om23_gs*ug(k)
+        end do
+
+    endif
+   endif
+
+    if(ltimedepsurf) call timedepsurf
 
     if (.not. ltimedep) return
     call timedepz
-    call timedepsurf
     call timedepsv
   end subroutine timedep
 
   subroutine timedepz
-    use modfields,   only : ug, vg, wfls,whls,dqtdtls,thlpcar,thl0,dpdxl,dpdyl
+    use modfields,   only : ug, vg, uadv, vadv, wfls,whls,dqtdtls,thlpcar,thl0,dpdxl,dpdyl
     use modglobal,   only : rtimee,om23_gs,dzf,dzh,k1,kmax,llsadv
     use modmpi,      only : myid
 
@@ -301,6 +364,15 @@ contains
     integer t,k
     real fac
 
+  if(.not. ltimedep) then 
+    do k=1,kmax
+      dpdxl(k) = om23_gs*vg(k) 
+      dpdyl(k) = -om23_gs*ug(k)
+    end do
+  endif
+!
+! Large scale forcings : NB uadv/vadv/thlpcar/qtp only applied with ltimestep=.true.
+!
     if(.not.(ltimedepz)) return
 
     !---- interpolate ----
@@ -312,11 +384,16 @@ contains
       t=t-1
     end if
 
+    fac = 0.0
+
     fac = ( rtimee-timels(t) ) / ( timels(t+1)-timels(t) )
+    ! large scale tendencies
     ug      = ugt     (:,t) + fac * ( ugt     (:,t+1) - ugt     (:,t) )
     vg      = vgt     (:,t) + fac * ( vgt     (:,t+1) - vgt     (:,t) )
     wfls    = wflst   (:,t) + fac * ( wflst   (:,t+1) - wflst   (:,t) )
     dqtdtls = dqtdtlst(:,t) + fac * ( dqtdtlst(:,t+1) - dqtdtlst(:,t) )
+    uadv    = dudtlst(:,t) + fac * ( dudtlst(:,t+1) - dudtlst(:,t) )
+    vadv    = dvdtlst(:,t) + fac * ( dvdtlst(:,t+1) - dvdtlst(:,t) )
     thlpcar = thlpcart(:,t) + fac * ( thlpcart(:,t+1) - thlpcart(:,t) )
 
     do k=1,kmax
@@ -344,6 +421,7 @@ contains
     use modglobal,   only : rtimee, lmoist
     use modsurfdata, only : wtsurf,wqsurf,thls,qts,ps
     use modsurface,  only : qtsurf
+    use modmpi,      only : myid
     implicit none
     integer t
     real fac
@@ -351,6 +429,7 @@ contains
     if(.not.(ltimedepsurf)) return
   !     --- interpolate! ----
     t=1
+
     do while(rtimee>timeflux(t))
       t=t+1
     end do
@@ -363,13 +442,19 @@ contains
     wtsurf = wtsurft(t) + fac * ( wtsurft(t+1) - wtsurft(t)  )
     thls   = thlst(t)   + fac * ( thlst(t+1)   - thlst(t)    )
     ps     = pst(t)     + fac * ( pst(t+1)   - pst(t)    )
+
+    if(myid==0) print*,' HERE ps : ',ps,fac * ( pst(t+1)   - pst(t)    )
+
 !cstep: not necessary to provide qts in ls_flux file qts    = qtst(t)    + fac * ( qtst(t+1)    - qtst(t)     )
     if (lmoist) then
-       call qtsurf
+      ! call qtsurf
+       qts = qtst(t)    + fac * ( qtst(t+1)    - qtst(t)     )
     else
-       qts = 0.
+!
+!          Use consistent HARMONIE fields 
+       qts = qtst(t)    + fac * ( qtst(t+1)    - qtst(t)     )
+!
     endif
-
     return
   end subroutine timedepsurf
 

@@ -214,8 +214,6 @@ contains
       end do
     end do
 
-
-
   end subroutine calthv
 !> Calculate diagnostic slab averaged fields.
 !!     Calculates slab averaged fields assuming
@@ -414,7 +412,6 @@ contains
       do k=1,k1
         do j=2,j1
           do i=2,i1
-
             tl  = thl(i,j,k)*exner(k)
             Tnr=tl
             Tnr_old=0
@@ -471,7 +468,6 @@ contains
 !     first guess is Tnr=tl
       nitert = 0
       niter = 0
-     print*,' check thl0 ; ',minval(thl0(2,2,:)),maxval(thl0(2,2,:))
 
       do k=1,k1
        do j=2,j1
@@ -488,16 +484,8 @@ contains
             qvsl1=(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)
             qvsi1=(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
             qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
-            if(qsatur < -0.1) then
-                 print*,i,j,k,' il ratio : ',ilratio,qvsl1,qvsi1
-                 print*,i,j,k,' esl1, esi1 : ',esl1,esi1
-                 print*,k,' presf(k) : ',presf(k),' exnf(k) : ',exnf(k),' thl0(i,j,k) : ',thl0(i,j,k)
-                 print*,i,j,k,' tlonr  : ',tlonr
-            endif
-!            if(i==54 .and. j==3 ) then 
-              ! print*,k,' presf(k) : ',presf(k),' exnf(k) : ',exnf(k)
-!               print*,k,'thl0 : ',thl0(i,j,k)
-!            endif
+            qsatur = min(1.0,qsatur)
+            qsatur = max(1.0e-9,qsatur)
             if(qt0(i,j,k)>qsatur) then
               Tnr_old=0.
               niter = 0
@@ -511,9 +499,10 @@ contains
               esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
               esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
               qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+              qsatur = min(1.0,qsatur)
+              qsatur = max(1.0e-9,qsatur) ! place a minimum constraint on qsatur
               thlguessmin = ttry/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
               Tnr = Tnr - (thlguess-thl0(i,j,k))/((thlguess-thlguessmin)*500.)
-              if(i==2 .and. j==2 .and. myid==1) print*,'myid ; ',myid,k,tnr,thl0(i,j,k)
               do while ((abs(Tnr-Tnr_old) > 0.002).and.(niter<100))
                 niter = niter+1
                 Tnr_old=Tnr
@@ -523,13 +512,16 @@ contains
                  if(myid == 1 ) then
                   write(*,*) 'icethermo crash: i,j,k,thl0(i,j,k),qt0(i,j,k)'
                   write(*,*) i,j,k,thl0(i,j,k),qt0(i,j,k)
-                  write(*,*) ' MYID tnr tnr_old thlguess thlguessmin '
-                  write(*,*) myid, Tnr, Tnr_old,thlguess, thlguessmin
-                  write(*,*) ' qt0    qsatur '
-                  write(*,*) qt0(i,j,k),qsatur
+                  write(*,*) ' MYID tnr thlguess thlguessmin '
+                  write(*,*) myid, Tnr, thlguess, thlguessmin
+                  write(*,*) ' qt0    qsatur ilratio'
+                  write(*,*) qt0(i,j,k),qsatur,ilratio
                   write(*,*) ' presf  exnf'
                   write(*,*) presf(k),exnf(k)
+                  write(*,*) 'ttry tup tdn '
+                  write(*,*) ttry,tup,tdn,ttry-tdn,tup-tdn
                   write(*,*) ' tlonr : ',tlonr
+                  stop
                  endif
                 endif
                 thinr=tlonr+1
@@ -538,6 +530,8 @@ contains
                 esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
                 esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
                 qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+                qsatur = min(1.,qsatur)
+                qsatur = max(1.0e-9,qsatur) ! place a minimum constraint on qsatur
                 thlguess = Tnr/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
 
                 ttry=Tnr-0.002
@@ -549,6 +543,7 @@ contains
                 esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
                 esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
                 qsatur = ilratio*(rd/rv)*esl1/(presf(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presf(k)-(1.-rd/rv)*esi1)
+                qsatur = max(1.0e-9,qsatur) ! place a minimum constraint on qsatur
                 thlguessmin = ttry/exnf(k)-(rlv/(cp*exnf(k)))*max(qt0(i,j,k)-qsatur,0.)
 
                 Tnr = Tnr - (thlguess-thl0(i,j,k))/((thlguess-thlguessmin)*500.)
@@ -565,6 +560,8 @@ contains
               qvsl(i,j,k)=rd/rv*esl(i,j,k)/(presf(k)-(1.-rd/rv)*esl(i,j,k))
               qvsi(i,j,k)=rd/rv*esi1/(presf(k)-(1.-rd/rv)*esi1)
               qsatur = ilratio*qvsl(i,j,k)+(1.-ilratio)*qvsi(i,j,k)
+              qsatur = min(1.,qsatur)
+              qsatur = max(1.0e-9,qsatur) ! place a minimum constraint on qsatur
             else
               tmp0(i,j,k)= Tnr
               esl(i,j,k)=esl1
@@ -577,7 +574,7 @@ contains
        end do
       end do
       if(nitert>99) then
-      write(*,*) 'thermowarning'
+      write(*,*) 'thermowarning icethermo'
       endif
 
   end subroutine icethermo0
@@ -588,6 +585,7 @@ contains
 
   use modglobal, only : i1,j1,k1,rd,rv,rlv,tup,tdn,cp,ttab,esatltab,esatitab
   use modfields, only : qt0h,thl0h,exnh,presh,ql0h
+  use modmpi,    only : myid
   implicit none
 
   integer i, j, k
@@ -614,6 +612,8 @@ contains
             qvsl1=(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)
             qvsi1=(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
             qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
+            qsatur = min(1.,qsatur)
+            qsatur = max(1.0e-9,qsatur)
             if(qt0h(i,j,k)>qsatur) then
               Tnr_old=0.
               niter = 0
@@ -627,6 +627,8 @@ contains
               esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
               esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
               qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+              qsatur = min(1.,qsatur)
+              qsatur = max(1.0e-9,qsatur)
               thlguessmin = ttry/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
 
               Tnr = Tnr - (thlguess-thl0h(i,j,k))/((thlguess-thlguessmin)*500.)
@@ -635,9 +637,20 @@ contains
                 Tnr_old=Tnr
                 ilratio = max(0.,min(1.,(Tnr-tdn)/(tup-tdn)))
                 tlonr=int((Tnr-150.)*5.)
+                tlonr=max(1,tlonr)
                 if(tlonr<1 .or.tlonr>1999) then
                   write(*,*) 'thermo crash: i,j,k,niter,thl0h(i,j,k),qt0h(i,j,k)'
                   write(*,*) i,j,k,niter,thl0h(i,j,k),qt0h(i,j,k)
+                  write(*,*) ' presh '
+                  write(*,*) presh(k)
+                  write(*,*) ' MYID tnr tnr_old thlguess thlguessmin '
+                  write(*,*) myid, Tnr, Tnr_old,thlguess, thlguessmin
+                  write(*,*) ' qt0    qsatur ilratio'
+                  write(*,*) qt0h(i,j,k),qsatur,ilratio
+                  write(*,*) ' ttry tup tdn '
+                  write(*,*) ttry,tdn,tup,tup-tdn
+                  write(*,*) ' tlonr : ',tlonr
+                  stop
                 endif
                 thinr=tlonr+1
                 tlo=ttab(tlonr)
@@ -645,6 +658,8 @@ contains
                 esl1=(thi-Tnr)*5.*esatltab(tlonr)+(Tnr-tlo)*5.*esatltab(thinr)
                 esi1=(thi-Tnr)*5.*esatitab(tlonr)+(Tnr-tlo)*5.*esatitab(thinr)
                 qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+                qsatur = min(1.,qsatur)
+                qsatur = max(1.0e-9,qsatur)
                 thlguess = Tnr/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
 
                 ttry=Tnr-0.002
@@ -656,6 +671,8 @@ contains
                 esl1=(thi-ttry)*5.*esatltab(tlonr)+(ttry-tlo)*5.*esatltab(thinr)
                 esi1=(thi-ttry)*5.*esatitab(tlonr)+(ttry-tlo)*5.*esatitab(thinr)
                 qsatur = ilratio*(rd/rv)*esl1/(presh(k)-(1.-rd/rv)*esl1)+(1.-ilratio)*(rd/rv)*esi1/(presh(k)-(1.-rd/rv)*esi1)
+                qsatur = min(1.,qsatur)
+                qsatur = max(1.0e-9,qsatur)
                 thlguessmin = ttry/exnh(k)-(rlv/(cp*exnh(k)))*max(qt0h(i,j,k)-qsatur,0.)
 
                 Tnr = Tnr - (thlguess-thl0h(i,j,k))/((thlguess-thlguessmin)*500.)
@@ -671,13 +688,15 @@ contains
               qvsl1=rd/rv*esl1/(presh(k)-(1.-rd/rv)*esl1)
               qvsi1=rd/rv*esi1/(presh(k)-(1.-rd/rv)*esi1)
               qsatur = ilratio*qvsl1+(1.-ilratio)*qvsi1
+              qsatur = min(1.,qsatur)
+              qsatur = max(1.0e-9,qsatur)
             endif
             ql0h(i,j,k) = max(qt0h(i,j,k)-qsatur,0.)
       end do
       end do
       end do
       if(nitert>99) then
-      write(*,*) 'thermowarning'
+      write(*,*) 'thermowarning icethermoh'
       endif
 
   end subroutine icethermoh

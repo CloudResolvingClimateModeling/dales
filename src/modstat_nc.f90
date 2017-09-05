@@ -88,6 +88,7 @@ contains
     inquire(file=trim(fname),exist=exans)
 
     ncall = 0
+
     if (.not.exans) then
 
       call date_and_time(date,time)
@@ -145,6 +146,7 @@ contains
        ncall= 0
        iret = nf90_open (trim(fname), NF90_WRITE, ncid)
        iret = nf90_inquire(ncid, unlimitedDimId = RecordDimID)
+          print*,RecordDimID
        iret = nf90_inquire_dimension(ncid, RecordDimID, len=nrec)
        if (nrec>0) then
         iret = nf90_inq_varid(ncid,'time',timeID)

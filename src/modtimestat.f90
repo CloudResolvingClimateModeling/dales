@@ -225,7 +225,7 @@ contains
           enddo
         enddo
       endif
-
+   
       if (lnetcdf) then
         if(isurf == 1) then
           nvar = 32
@@ -234,7 +234,6 @@ contains
         end if
 
         allocate(ncname(nvar,4))
-
         fname(7:9) = cexpnr
         call ncinfo(ncname( 1,:),'time','Time','s','time')
         call ncinfo(ncname( 2,:),'cfrac','Cloud fraction','-','time')

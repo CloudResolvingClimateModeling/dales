@@ -95,13 +95,16 @@ save
   real, allocatable :: thl0av(:)                     !<   slab averaged th_liq
   real, allocatable :: u0av(:)                       !<   slab averaged u
   real, allocatable :: v0av(:)                       !<   slab averaged v
-  real, allocatable :: ug(:)                       !<   geostrophic u-wind
-  real, allocatable :: vg(:)                       !<   geostrophic v-wind
+  real, allocatable :: ug(:)                         !<   geostrophic u-wind
+  real, allocatable :: vg(:)                         !<   geostrophic v-wind
+  real, allocatable :: uadv(:)                       !<   u tendency
+  real, allocatable :: vadv(:)                       !<   v tendency
 
   real, allocatable :: dpdxl(:)                      !<   large scale pressure x-gradient
   real, allocatable :: dpdyl(:)                      !<   large scale pressure y-gradient
 
   real, allocatable :: dqtdtls(:)                    !<   large scale y-gradient of q_tot
+  real, allocatable :: dthldtls(:)                   !<   large scale y-gradient of thl
   real, allocatable :: wfls  (:)                     !<   large scale y-gradient of v
   real, allocatable :: ql0h(:,:,:)
   real, allocatable :: dthvdz(:,:,:)!<   theta_v at half level
@@ -189,9 +192,12 @@ subroutine initfields
     allocate(v0av(k1))
     allocate(ug(k1))
     allocate(vg(k1))
+    allocate(uadv(k1))
+    allocate(vadv(k1))
     allocate(dpdxl(k1))
     allocate(dpdyl(k1))
     allocate(dqtdtls(k1))
+    allocate(dthldtls(k1))
     allocate(wfls  (k1))
     allocate(ql0h(2-ih:i1+ih,2-jh:j1+jh,k1))
     allocate(dthvdz(2-ih:i1+ih,2-jh:j1+jh,k1))
@@ -212,8 +218,8 @@ subroutine initfields
              ,esl(2-ih:i1+ih,2-jh:j1+jh,k1))     ! es-liquid
     allocate(LW_dn_TOA(2-ih:i1+ih,2-jh:j1+jh))
 
-    um=0.;u0=0.;up=0.
-    vm=0.;v0=0.;vp=0.
+    um=0.;u0=0.;up=0. ; uadv=0.
+    vm=0.;v0=0.;vp=0. ; vadv=0.
     wm=0.;w0=0.;wp=0.;wp_store=0.
     thlm=0.;thl0=0.;thlp=0.
     qtm=0.;qt0=0.;qtp=0.
@@ -238,13 +244,13 @@ subroutine initfields
 !> Deallocate the fields
   subroutine exitfields
   implicit none
-    deallocate(um,vm,wm,thlm,e12m,qtm,u0,v0,w0,thl0,thl0h,qt0h,e120,qt0)
+    deallocate(um,vm,wm,thlm,e12m,qtm,u0,v0,w0,thl0,thl0h,qt0h,e120,qt0,uadv,vadv)
     deallocate(up,vp,wp,wp_store,thlp,e12p,qtp)
     deallocate(svm,sv0,svp)
     deallocate(rhobf,rhobh)
     deallocate(drhobdzf,drhobdzh)
     deallocate(ql0,tmp0,ql0h,thv0h,dthvdz,whls,presf,presh,exnf,exnh,thvh,thvf,rhof,qt0av,ql0av,thl0av,u0av,v0av)
-    deallocate(ug,vg,dpdxl,dpdyl,wfls,dqtdtls)
+    deallocate(ug,vg,dpdxl,dpdyl,wfls,dqtdtls,dthldtls)
     deallocate(thlprof,qtprof,uprof,vprof,e12prof,sv0av,svprof)
     deallocate(thlpcar)
     deallocate(SW_up_TOA,SW_dn_TOA,LW_up_TOA,LW_dn_TOA)

@@ -31,7 +31,7 @@ save
       integer :: jtot = 64
       integer :: imax
       integer :: jmax
-      integer :: kmax = 65
+      integer :: kmax = 120
       integer ::  i1
       integer ::  j1
       integer ::  k1
@@ -93,20 +93,21 @@ save
       real,parameter :: bt       = 35.86            !<    * using Tetens Formula.
       real,parameter :: ekmin    = 1.e-6            !<    *minimum value for k-coefficient.
       real,parameter :: e12min   = 5.e-5            !<    *minimum value for TKE.
+      real,parameter :: e12max   = 100.0            !<    *maximum value for TKE
       real,parameter :: fkar     = 0.4              !<    *Von Karman constant
       real,parameter :: eps1     = 1.e-10           !<    *very small number*
       real,parameter :: epscloud = 1.e-5            !<    *limit for cloud calculation 0.01 g/kg
       real,parameter :: boltz    = 5.67e-8          !<    *Stefan-Boltzmann constant
 
-      logical :: lcoriol  = .true.  !<  switch for coriolis force
-      integer :: igrw_damp = 2 !< switch to enable gravity wave damping
+      logical :: lcoriol  = .true.          !<  switch for coriolis force
+      integer :: igrw_damp = 2              !< switch to enable gravity wave damping
       real    :: geodamptime = 7200. !< time scale for nudging to geowind in sponge layer, prevents oscillations
       real    :: om22                       !<    *2.*omega_earth*cos(lat)
       real    :: om23                       !<    *2.*omega_earth*sin(lat)
-      real    :: om22_gs                       !<    *2.*omega_earth*cos(lat)
-      real    :: om23_gs                       !<    *2.*omega_earth*sin(lat)
+      real    :: om22_gs                    !<    *2.*omega_earth*cos(lat)
+      real    :: om23_gs                    !<    *2.*omega_earth*sin(lat)
       real    :: xlat    = 52.              !<    *latitude  in degrees.
-      real    :: xlon    = 0.               !<    *longitude in degrees.
+      real    :: xlon    = 4.8              !<    *longitude in degrees. (JEW: Cabauw)
       logical :: lrigidlid = .false. !< switch to enable simulations with a rigid lid
       real    :: unudge = 1.0   !< Nudging factor if igrw_damp == -1 (nudging mean wind fields to geostrophic values provided by lscale.inp)
 
@@ -120,6 +121,7 @@ save
 
       !Advection scheme
       integer :: iadv_mom = 5, iadv_tke = -1, iadv_thl = -1,iadv_qt = -1,iadv_sv(100) = -1
+      integer, parameter :: iadv_null   = 0
       integer, parameter :: iadv_upw    = 1
       integer, parameter :: iadv_cd2    = 2
       integer, parameter :: iadv_5th    = 5
@@ -181,8 +183,6 @@ save
       integer :: iexpnr = 0     !<     * number of the experiment
 
       character(3) cexpnr
-
-
 
       ! modphsgrd.f90
 
@@ -309,10 +309,17 @@ contains
 
     ! Global constants
 
+    
+
+    ! esatltab(m) gives the saturation vapor pressure over water at T corresponding to m
+    ! esatitab(m) is the same over ice
+    ! http://www.radiativetransfer.org/misc/atmlabdoc/atmlab/h2o/thermodynamics/e_eq_water_mk.html
+    ! Murphy and Koop 2005 parameterization formula.
     do m=1,2000
     ttab(m)=150.+0.2*m
     esatltab(m)=exp(54.842763-6763.22/ttab(m)-4.21*log(ttab(m))+0.000367*ttab(m)+&
-    tanh(0.0415*(ttab(m)-218.8))*(53.878-1331.22/ttab(m)-9.44523*log(ttab(m))+ 0.014025*ttab(m)))
+         tanh(0.0415*(ttab(m)-218.8))*(53.878-1331.22/ttab(m)-9.44523*log(ttab(m))+ 0.014025*ttab(m)))
+    
     esatitab(m)=exp(9.550426-5723.265/ttab(m)+3.53068*log(ttab(m))-0.00728332*ttab(m))
     end do
 
@@ -354,7 +361,6 @@ contains
     ! Variables
     allocate(dsv(nsv))
     write(cexpnr,'(i3.3)') iexpnr
-
 
     ! Create the physical grid variables
     allocate(dzf(k1))
