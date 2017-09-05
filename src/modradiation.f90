@@ -204,6 +204,7 @@ contains
     if((itimerad==0 .or. timee==tnext) .and. rk3step==1) then
       tnext = tnext+itimerad
       thlprad = 0.0
+
       select case (iradiation)
           case (irad_none)
           case (irad_full)
@@ -229,6 +230,7 @@ contains
         call radprof
       endif
     end if
+
     thlp = thlp + thlprad
 
 

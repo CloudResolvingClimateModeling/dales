@@ -100,7 +100,7 @@ program DALES      !Version 4.0.0alpha
 !!----------------------------------------------------------------
 !!     0.0    USE STATEMENTS FOR CORE MODULES
 !!----------------------------------------------------------------
-  use modglobal,         only : rk3step,timeleft
+  use modglobal,         only : rk3step,timeleft,xlat,xlon
   use modmpi,            only : initmpicomm
   use modstartup,        only : startup, writerestartfiles,exitmodules
   use modtimedep,        only : timedep
@@ -112,7 +112,6 @@ program DALES      !Version 4.0.0alpha
   use modforces,         only : forces, coriolis, lstend
   use modradiation,      only : radiation
   use modpois,           only : poisson
-  !use modedgecold,       only : coldedge
 
 !----------------------------------------------------------------
 !     0.1     USE STATEMENTS FOR ADDONS STATISTICAL ROUTINES
@@ -159,7 +158,6 @@ program DALES      !Version 4.0.0alpha
   ! call initmpi initmpi depends on options in the namelist, call moved to startup
   call initmpicomm
   call startup
-
 !---------------------------------------------------------
 !      2     INITIALIZE STATISTICAL ROUTINES AND ADD-ONS
 !---------------------------------------------------------
@@ -176,7 +174,7 @@ program DALES      !Version 4.0.0alpha
   !call initprojection
   call initcloudfield
   call initfielddump
-  call initsamptend
+  call initsamptend 
   call initradstat
   call initlsmstat
   !call initparticles
@@ -191,13 +189,13 @@ program DALES      !Version 4.0.0alpha
   !call initspectra2
   call initcape
 
-
 !------------------------------------------------------
 !   3.0   MAIN TIME LOOP
 !------------------------------------------------------
   do while (timeleft>0 .or. rk3step < 3)
     call tstep_update                           ! Calculate new timestep
     call timedep
+
     call samptend(tend_start,firstterm=.true.)
 
 !-----------------------------------------------------
@@ -210,7 +208,6 @@ program DALES      !Version 4.0.0alpha
 !   3.2   THE SURFACE LAYER
 !-----------------------------------------------------
     call surface
-
 !-----------------------------------------------------
 !   3.3   ADVECTION AND DIFFUSION
 !-----------------------------------------------------
@@ -232,7 +229,6 @@ program DALES      !Version 4.0.0alpha
     call samptend(tend_ls)
     call microsources !Drizzle etc.
     call samptend(tend_micro)
-
 !------------------------------------------------------
 !   3.4   EXECUTE ADD ONS
 !------------------------------------------------------
@@ -241,7 +237,6 @@ program DALES      !Version 4.0.0alpha
 !    call tiltedgravity
 
     call samptend(tend_addon)
-
 !-----------------------------------------------------------------------
 !   3.5  PRESSURE FLUCTUATIONS, TIME INTEGRATION AND BOUNDARY CONDITIONS
 !-----------------------------------------------------------------------
@@ -253,6 +248,7 @@ program DALES      !Version 4.0.0alpha
 
     call tstep_integrate                        ! Apply tendencies to all variables
     call boundary
+
     !call tiltedboundary
 !-----------------------------------------------------
 !   3.6   LIQUID WATER CONTENT AND DIAGNOSTIC FIELDS
@@ -280,7 +276,6 @@ program DALES      !Version 4.0.0alpha
     call cloudfield
     call fielddump
     !call particles
-
     call bulkmicrostat
     call budgetstat
     !call stressbudgetstat

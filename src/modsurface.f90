@@ -469,6 +469,8 @@ contains
             enddo
           enddo
         case default ! Prescribed land surfaces: isurf = 2, 3, 4 (& 10)
+          print*,' HERE   ============== > '
+          stop
           thls   = 0
           ps     = 0
           ustin  = 0

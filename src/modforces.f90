@@ -82,6 +82,7 @@ contains
     do i=2,i1
       up(i,j,k) = up(i,j,k) - dpdxl(k)
       vp(i,j,k) = vp(i,j,k) - dpdyl(k)
+      if(dpdxl(k) .gt. 0.0) print*,i,j,dpdxl(k)
       wp(i,j,k) = wp(i,j,k) + grav*(thv0h(i,j,k)-thvh(k))/thvh(k) - &
                   grav*(sv0(i,j,k,iqr)*dzf(k-1)+sv0(i,j,k-1,iqr)*dzf(k))/(2.0*dzh(k))
     end do
@@ -268,6 +269,7 @@ contains
    !
     if( ltimedep ) then
       thlp(i,j,1) = thlp(i,j,1) + thlpcar(1) - subs_thl
+  !    thlp(i,j,1) = thlp(i,j,1) -subs_thl
       qtp(i,j,1)  = qtp (i,j,1) + dqtdtls(1) - subs_qt 
       up (i,j,1)  = up  (i,j,1) + uadv(1) -subs_u
       vp (i,j,1)  = vp  (i,j,1) + vadv(1) -subs_v
@@ -319,6 +321,7 @@ contains
 
        if( ltimedep ) then
          thlp(i,j,k) = thlp(i,j,k) + thlpcar(k) - subs_thl
+!         thlp(i,j,k) = thlp(i,j,k) -subs_thl
          qtp(i,j,k)  = qtp (i,j,k) + dqtdtls(k) - subs_qt 
          up (i,j,k)  = up  (i,j,k) + uadv(k) -subs_u
          vp (i,j,k)  = vp  (i,j,k) + vadv(k) -subs_v

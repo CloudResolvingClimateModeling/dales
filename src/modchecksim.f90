@@ -180,16 +180,16 @@ contains
     divtotl= 0.
 
     do k=1,kmax
-    do j=2,j1
-    do i=2,i1
-      div = &
+     do j=2,j1
+      do i=2,i1
+        div = &
                 (um(i+1,j,k) - um(i,j,k) )/dx + &
                 (vm(i,j+1,k) - vm(i,j,k) )/dy + &
                 (wm(i,j,k+1) - wm(i,j,k) )/dzf(k)
-      divmaxl = max(divmaxl,abs(div))
-      divtotl = divtotl + div*dx*dy*dzf(k)
-    end do
-    end do
+         divmaxl = max(divmaxl,abs(div))
+        divtotl = divtotl + div*dx*dy*dzf(k)
+       end do
+      end do
     end do
 
     call MPI_ALLREDUCE(divtotl, divtot, 1,    MY_REAL, &

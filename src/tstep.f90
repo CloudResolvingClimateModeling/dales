@@ -166,8 +166,7 @@ subroutine tstep_integrate
   use modfields, only : u0,um,up,v0,vm,vp,w0,wm,wp,wp_store,&
                         thl0,thlm,thlp,qt0,qtm,qtp,&
                         e120,e12m,e12p,sv0,svm,svp,&
-                        ug, vg, uadv, vadv, wfls,whls,&
-                        dpdxl,dpdyl,dqtdtls,dthldtls
+                        uadv, vadv, wfls,whls
   use modtimedep,only : ltimedep
   use modtestbed,only : ltestbed
 

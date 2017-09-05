@@ -33,13 +33,15 @@ module modnudge
 
 implicit none
 PRIVATE
-PUBLIC :: initnudge, nudge,exitnudge
+PUBLIC :: initnudge, ntnudge, nknudgep1, nknudge, nudge,exitnudge
 SAVE
   real, dimension(:,:), allocatable :: tnudge,unudge,vnudge,wnudge,thlnudge,qtnudge
   real, dimension(:)  , allocatable :: timenudge
   real :: tnudgefac = 1.
   logical :: lnudge = .false.,lunudge,lvnudge,lwnudge,lthlnudge,lqtnudge
-  integer :: ntnudge = 100
+  integer :: ntnudge = 433
+  integer :: nknudgep1=1
+  integer :: nknudge=65
 
 contains
   subroutine initnudge
@@ -89,7 +91,7 @@ contains
         do while (.not.(chmess1 == "#" .and. ierr ==0))
           read(ifinput,*,iostat=ierr) chmess1,timenudge(t)
           if (ierr < 0) then
-            stop 'STOP: No time dependend nudging data for end of run'
+            stop 'STOP: No time dependend nudging data for end of run (NUDGE)'
           end if
 
         end do

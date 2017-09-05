@@ -414,7 +414,9 @@ contains
         endif
 
        if( .not. ltestbed) then
-
+!
+!  Original method of reading in initialization profiles from ascii
+!
         open (ifinput,file='prof.inp.'//cexpnr)
         read (ifinput,'(a100)') chmess
         write(*,     '(a80)') chmess
@@ -683,8 +685,13 @@ contains
           
           do k=1,kmax
             height (k) = zf(k)
-            ug     (k) = tb_ug(2,k)
-            vg     (k) = tb_vg(2,k)
+!------------------------------------------------------------------
+!     Initialize the ug close to the u component
+!     First tests use /50. for added ug
+!
+!------------------------------------------------------------------
+            ug     (k) = tb_u(2,k) + tb_ug(2,k)/25.
+            vg     (k) = tb_v(2,k) + tb_vg(2,k)/25.
             wfls   (k) = tb_w(2,k)
             dqtdtls(k) = tb_qtadv(2,k)
             thlpcar(k) = tb_thladv(2,k)
@@ -898,7 +905,7 @@ contains
       write (name(9:10) ,'(i2.2)') imin
       name(12:19)= cmyid
       name(21:23)= cexpnr
-      open  (ifoutput,file=name,form='unformatted',status='replace')
+      open (ifoutput,file=name,form='unformatted',status='replace')
 
       write(ifoutput)  (((u0 (i,j,k),i=2-ih,i1+ih),j=2-jh,j1+jh),k=1,k1)
       write(ifoutput)  (((v0 (i,j,k),i=2-ih,i1+ih),j=2-jh,j1+jh),k=1,k1)

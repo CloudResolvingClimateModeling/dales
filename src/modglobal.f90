@@ -31,7 +31,7 @@ save
       integer :: jtot = 64
       integer :: imax
       integer :: jmax
-      integer :: kmax = 96
+      integer :: kmax = 120
       integer ::  i1
       integer ::  j1
       integer ::  k1
@@ -93,20 +93,21 @@ save
       real,parameter :: bt       = 35.86            !<    * using Tetens Formula.
       real,parameter :: ekmin    = 1.e-6            !<    *minimum value for k-coefficient.
       real,parameter :: e12min   = 5.e-5            !<    *minimum value for TKE.
+      real,parameter :: e12max   = 100.0            !<    *maximum value for TKE
       real,parameter :: fkar     = 0.4              !<    *Von Karman constant
       real,parameter :: eps1     = 1.e-10           !<    *very small number*
       real,parameter :: epscloud = 1.e-5            !<    *limit for cloud calculation 0.01 g/kg
       real,parameter :: boltz    = 5.67e-8          !<    *Stefan-Boltzmann constant
 
-      logical :: lcoriol  = .true.  !<  switch for coriolis force
-      integer :: igrw_damp = 2 !< switch to enable gravity wave damping
+      logical :: lcoriol  = .true.          !<  switch for coriolis force
+      integer :: igrw_damp = 2              !< switch to enable gravity wave damping
       real    :: geodamptime = 7200. !< time scale for nudging to geowind in sponge layer, prevents oscillations
       real    :: om22                       !<    *2.*omega_earth*cos(lat)
       real    :: om23                       !<    *2.*omega_earth*sin(lat)
-      real    :: om22_gs                       !<    *2.*omega_earth*cos(lat)
-      real    :: om23_gs                       !<    *2.*omega_earth*sin(lat)
+      real    :: om22_gs                    !<    *2.*omega_earth*cos(lat)
+      real    :: om23_gs                    !<    *2.*omega_earth*sin(lat)
       real    :: xlat    = 52.              !<    *latitude  in degrees.
-      real    :: xlon    = 0.               !<    *longitude in degrees.
+      real    :: xlon    = 4.8              !<    *longitude in degrees. (JEW: Cabauw)
       logical :: lrigidlid = .false. !< switch to enable simulations with a rigid lid
       real    :: unudge = 1.0   !< Nudging factor if igrw_damp == -1 (nudging mean wind fields to geostrophic values provided by lscale.inp)
 
@@ -181,8 +182,6 @@ save
       integer :: iexpnr = 0     !<     * number of the experiment
 
       character(3) cexpnr
-
-
 
       ! modphsgrd.f90
 
@@ -355,14 +354,12 @@ contains
     allocate(dsv(nsv))
     write(cexpnr,'(i3.3)') iexpnr
 
-
     ! Create the physical grid variables
     allocate(dzf(k1))
     allocate(dzh(k1))
     allocate(zh(k1))
     allocate(zf(k1))
     allocate(delta(k1))
-
 
     ijtot = real(itot*jtot)
 
@@ -409,7 +406,6 @@ contains
     end do
 
     do k=1,k1
-
       delta(k) = (dx*dy*dzf(k))**(1./3.)
     end do
 
