@@ -60,12 +60,18 @@ subroutine advection
       call advecu_5th(u0,up)
       call advecv_5th(v0,vp)
       call advecw_5th(w0,wp)
-    case(iadv_null)
-       ! null advection scheme 
+   case (152)
+      call advec_152()
+      ! all advection functions merged into one
+   case (252)
+      call advec_252()
+      ! all velocity advection functions merged into one       
+   case(iadv_null)
+      ! null advection scheme 
       stop "Null advection scheme selected for iadv_mom - probably a bad idea."
-    case default
+   case default
       stop "Unknown advection scheme "
-  end select
+   end select
 
   if (.not. lsmagorinsky) then
     select case(iadv_tke)
@@ -83,7 +89,9 @@ subroutine advection
         call advecc_kappa(e120,e12p)
       case(iadv_hybrid)
         call advecc_hybrid(e120,e12p)
-      case(iadv_null)
+     case(152)
+        ! do nothing - 152 is called only once
+     case(iadv_null)
          ! null advection scheme 
          stop "Null advection scheme selected for iadv_tke - probably a bad idea."
       case default
@@ -107,7 +115,9 @@ subroutine advection
     case(iadv_upw)
       call advecc_upw(thl0,thlp)
     case(iadv_hybrid)
-      call advecc_hybrid(thl0,thlp)
+       call advecc_hybrid(thl0,thlp)
+    case(152)
+       ! do nothing - 152 is called only once
     case(iadv_null)
       ! null advection scheme 
       stop "Null advection scheme selected for iadv_thl - probably a bad idea." 
@@ -131,7 +141,9 @@ subroutine advection
       case(iadv_upw)
         call advecc_upw(qt0,qtp)
       case(iadv_hybrid)
-        call advecc_hybrid(qt0,qtp)
+         call advecc_hybrid(qt0,qtp)
+      case(152)
+         ! do nothing - 152 is called only once         
       case(iadv_null)
          ! null advection scheme 
          stop "Null advection scheme selected for iadv_qt - probably a bad idea."
@@ -157,6 +169,8 @@ subroutine advection
       call advecc_upw(sv0(:,:,:,n),svp(:,:,:,n))
     case(iadv_hybrid)
        call advecc_hybrid(sv0(:,:,:,n),svp(:,:,:,n))
+    case(152)
+       ! do nothing - 152 is called only once
     case(iadv_null)
        ! null advection scheme - do nothing
     case default
