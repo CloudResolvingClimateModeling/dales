@@ -357,47 +357,49 @@ subroutine lstend
 !     1.2 other model levels twostream
 
   do k=2,kmax
-    kp=k+1
-    km=k-1
-    do j=2,j1
-      do i=2,i1
-        if (whls_dzh(kp).lt.0) then   !downwind scheme for subsidence
-          subs_thl    = whls_dzh(kp) * (thl0(i,j,kp) - thl0(i,j,k))
-          subs_qt     = whls_dzh(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))
-          thlp(i,j,k) = thlp(i,j,k) - subs_thl
-          qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
-          if (lmomsubs) then
-            subs_u    = whls_dzh(kp) * (u0(i,j,kp) - u0(i,j,k))
-            subs_v    = whls_dzh(kp) * (v0(i,j,kp) - v0(i,j,k))
-            up  (i,j,k) = up  (i,j,k) - subs_u
-            vp  (i,j,k) = vp  (i,j,k) - subs_v
-          endif
-          do n=1,nsv
-            subs_sv   = whls_dzh(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))
-            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
-          enddo
-        else !downwind scheme for mean upward motions
-          subs_thl    = whls_dzh(k) * (thl0(i,j,k) - thl0(i,j,km))
-          subs_qt     = whls_dzh(k) * (qt0 (i,j,k) - qt0 (i,j,km))
-          thlp(i,j,k) = thlp(i,j,k) - subs_thl
-          qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
-                  
-          if (lmomsubs) then
-            subs_u    = whls_dzh(k) * (u0(i,j,k) - u0(i,j,km))
-            subs_v    = whls_dzh(k) * (v0(i,j,k) - v0(i,j,km))
-            up  (i,j,k) = up  (i,j,k) - subs_u
-            vp  (i,j,k) = vp  (i,j,k) - subs_v
-          endif
-          do n=1,nsv
-            subs_sv   = whls_dzh(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))
-            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
-          enddo
-        endif
-
-
-      enddo
-    enddo
-  enddo
+     kp=k+1
+     km=k-1
+     if (whls_dzh(kp).lt.0) then   !downwind scheme for subsidence
+        do j=2,j1
+           do i=2,i1
+              subs_thl    = whls_dzh(kp) * (thl0(i,j,kp) - thl0(i,j,k))
+              subs_qt     = whls_dzh(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))
+              thlp(i,j,k) = thlp(i,j,k) - subs_thl
+              qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
+              if (lmomsubs) then
+                 subs_u    = whls_dzh(kp) * (u0(i,j,kp) - u0(i,j,k))
+                 subs_v    = whls_dzh(kp) * (v0(i,j,kp) - v0(i,j,k))
+                 up  (i,j,k) = up  (i,j,k) - subs_u
+                 vp  (i,j,k) = vp  (i,j,k) - subs_v
+              endif
+              do n=1,nsv
+                 subs_sv   = whls_dzh(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))
+                 svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+              enddo
+           enddo
+        enddo
+     else !downwind scheme for mean upward motions
+        do j=2,j1
+           do i=2,i1       
+              subs_thl    = whls_dzh(k) * (thl0(i,j,k) - thl0(i,j,km))
+              subs_qt     = whls_dzh(k) * (qt0 (i,j,k) - qt0 (i,j,km))
+              thlp(i,j,k) = thlp(i,j,k) - subs_thl
+              qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
+              
+              if (lmomsubs) then
+                 subs_u    = whls_dzh(k) * (u0(i,j,k) - u0(i,j,km))
+                 subs_v    = whls_dzh(k) * (v0(i,j,k) - v0(i,j,km))
+                 up  (i,j,k) = up  (i,j,k) - subs_u
+                 vp  (i,j,k) = vp  (i,j,k) - subs_v
+              endif
+              do n=1,nsv
+                 subs_sv   = whls_dzh(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))
+                 svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+              enddo
+           enddo
+        enddo
+     endif
+ enddo
 
   return
 end subroutine lstend
