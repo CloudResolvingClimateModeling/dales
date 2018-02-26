@@ -43,7 +43,7 @@ subroutine advec_152()
   use modfields, only : u0, up, v0, vp, w0, wp, rhobf, rhobh, thl0, thlp, qt0, qtp, sv0, svp, e120, e12p
   implicit none
 
-  integer :: i,j,k
+  integer :: i,j,k,jb
   real ::  inv2dzfk, rhobf_p, rhobf_m
   k = 1
   inv2dzfk = 1./(2. * dzf(k))
@@ -216,13 +216,15 @@ subroutine advec_152()
      end do
   end do
   
-  
+
+  do jb = 2,j1,8
+
   do k=2,kmax
      inv2dzfk = 1./(2. * dzf(k))
      rhobf_p = rhobf(k+1)/rhobf(k)
      rhobf_m = rhobf(k-1)/rhobf(k)
 
-    do j=2,j1
+    do j=jb,min(jb+8-1,j1)
       do i=2,i1
  
         up(i,j,k)  = up(i,j,k)- ( &
@@ -427,6 +429,7 @@ subroutine advec_152()
       end do
     end do
   end do
+end do
 
 end subroutine advec_152
 
@@ -439,7 +442,7 @@ subroutine advec_252()
   use modfields, only : u0, up, v0, vp, w0, wp, rhobf, rhobh
   implicit none
 
-  integer :: i,j,k
+  integer :: i,j,k,ib,jb
   real ::  inv2dzfk, rhobf_p, rhobf_m
   k = 1
   inv2dzfk = 1./(2. * dzf(k))
@@ -503,13 +506,17 @@ subroutine advec_252()
      end do
   end do
   
-  
-  do k=2,kmax
+
+  do jb = 2,j1,16
+!     do ib = 2,i1,32
+        
+      do k=2,kmax
      inv2dzfk = 1./(2. * dzf(k))
      rhobf_p = rhobf(k+1)/rhobf(k)
      rhobf_m = rhobf(k-1)/rhobf(k)
-
-    do j=2,j1
+     do j=jb,min(jb+16-1,j1)
+!        do i=ib,min(ib+32-1,i1)
+!    do j=2,j1
       do i=2,i1
  
         up(i,j,k)  = up(i,j,k)- ( &
@@ -597,6 +604,8 @@ subroutine advec_252()
       end do
     end do
   end do
+end do
+!end do
 
 end subroutine advec_252
 
