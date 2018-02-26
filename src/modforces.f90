@@ -199,7 +199,212 @@ contains
   return
   end subroutine coriolis
 
-  subroutine lstend
+! experimental version - get rid of dudxls etc, vectorize  
+subroutine lstend_2
+
+!-----------------------------------------------------------------|
+!                                                                 |
+!*** *lstend*  calculates large-scale tendencies                  |
+!                                                                 |
+!      Pier Siebesma   K.N.M.I.     06/01/1995                    |
+!                                                                 |
+!     purpose.                                                    |
+!     --------                                                    |
+!                                                                 |
+!     calculates and adds large-scale tendencies due to           |
+!     large scale advection and subsidence.                       |
+!                                                                 |
+!**   interface.                                                  |
+!     ----------                                                  |
+!                                                                 |
+!             *lstend* is called from *program*.                  |
+!                                                                 |
+!-----------------------------------------------------------------|
+
+  use modglobal, only : i1,j1,kmax,dzh,nsv,lmomsubs
+  use modfields, only : up,vp,thlp,qtp,svp,&
+                        whls, u0av,v0av,thl0,qt0,sv0,u0,v0,&
+                        dudxls,dudyls,dvdxls,dvdyls,dthldxls,dthldyls,dqtdxls,dqtdyls,dqtdtls
+  implicit none
+
+  integer i,j,k,n,kp,km
+  real subs_thl,subs_qt,subs_sv,subs_u,subs_v
+
+!     1. DETERMINE LARGE SCALE TENDENCIES
+!        --------------------------------
+
+!     1.1 lowest model level above surface : only downward component
+
+  subs_thl = 0.
+  subs_qt  = 0.
+  subs_sv  = 0.
+  subs_u   = 0.
+  subs_v   = 0.
+
+  k = 1
+  if (whls(2).lt.0) then !neglect effect of mean ascending on tendencies at the lowest full level
+     thlp(:,:,1) = thlp(:,:,1) - 0.5*whls(2)  *(thl0(:,:,2)-thl0(:,:,1))/dzh(2)
+     qtp(:,:,1)  = qtp (:,:,1) - 0.5*whls(2)  *(qt0(:,:,2)-qt0(:,:,1) )/dzh(2) + dqtdtls(1)
+     if (lmomsubs) then
+        up  (:,:,1) = up  (:,:,1) - 0.5*whls(2)  *(u0(:,:,2)-u0(:,:,1))/dzh(2)
+        vp  (:,:,1) = vp  (:,:,1) - 0.5*whls(2)  *(v0(:,:,2)-v0(:,:,1))/dzh(2)
+     endif
+     svp(:,:,1,:) = svp(:,:,1,:) - 0.5*whls(2)  *(sv0(:,:,2,:)-sv0(:,:,1,:)  )/dzh(2)
+  else
+     qtp(:,:,1)  = qtp (:,:,1) + dqtdtls(1) ! dqtdtls(1) should be included in any case
+  endif
+      
+
+
+!     1.2 other model levels twostream
+
+  do k=2,kmax
+    kp=k+1
+    km=k-1
+    if (whls(kp).lt.0) then   !downwind scheme for subsidence
+       thlp(:,:,k) = thlp(:,:,k) - whls(kp) * (thl0(:,:,kp) - thl0(:,:,k))/dzh(kp)
+       qtp (:,:,k) = qtp (:,:,k) - whls(kp) * (qt0 (:,:,kp) - qt0 (:,:,k))/dzh(kp) + dqtdtls(k)
+       if (lmomsubs) then
+          up  (:,:,k) = up  (:,:,k) - whls(kp) * (u0(:,:,kp) - u0(:,:,k))/dzh(kp)
+          vp  (:,:,k) = vp  (:,:,k) - whls(kp) * (v0(:,:,kp) - v0(:,:,k))/dzh(kp)
+       endif
+       svp(:,:,k,:) = svp(:,:,k,:) - whls(kp)  *(sv0(:,:,kp,:) - sv0(:,:,k,:))/dzh(kp)
+    else !downwind scheme for mean upward motions
+       thlp(:,:,k) = thlp(:,:,k) - whls(k) * (thl0(:,:,k) - thl0(:,:,km))/dzh(k)
+       qtp (:,:,k) = qtp (:,:,k) - whls(k) * (qt0 (:,:,k) - qt0 (:,:,km))/dzh(k) + dqtdtls(k)
+       if (lmomsubs) then
+          up  (:,:,1) = up  (:,:,1) - whls(k) * (u0(:,:,k) - u0(:,:,km))/dzh(k)
+          vp  (:,:,1) = vp  (:,:,1) - whls(k) * (v0(:,:,k) - v0(:,:,km))/dzh(k)
+       endif
+       svp(:,:,k,:) = svp(:,:,k,:) - whls(k) * (sv0(:,:,k,:) - sv0(:,:,km,:))/dzh(k)
+    endif
+  enddo
+
+  return
+end subroutine lstend_2
+
+
+! experimental version - get rid of dudxls etc. Divisions out of loop.
+! only dqtdtls is left.
+subroutine lstend
+
+!-----------------------------------------------------------------|
+!                                                                 |
+!*** *lstend*  calculates large-scale tendencies                  |
+!                                                                 |
+!      Pier Siebesma   K.N.M.I.     06/01/1995                    |
+!                                                                 |
+!     purpose.                                                    |
+!     --------                                                    |
+!                                                                 |
+!     calculates and adds large-scale tendencies due to           |
+!     large scale advection and subsidence.                       |
+!                                                                 |
+!**   interface.                                                  |
+!     ----------                                                  |
+!                                                                 |
+!             *lstend* is called from *program*.                  |
+!                                                                 |
+!-----------------------------------------------------------------|
+
+  use modglobal, only : i1,j1,k1,kmax,dzh,nsv,lmomsubs
+  use modfields, only : up,vp,thlp,qtp,svp,&
+                        whls, u0av,v0av,thl0,qt0,sv0,u0,v0,&
+                        dqtdtls
+  implicit none
+
+  integer i,j,k,n,kp,km
+  real, dimension(1:k1) :: whls_dzh
+  real subs_thl,subs_qt,subs_sv,subs_u,subs_v
+
+  whls_dzh(1:k1) = whls(1:k1) / dzh(1:k1)
+  ! pre-calculate to get division out of loop
+  ! gfortran doesn't extract it by itself, probably since the access is at k or kp
+  ! in the downwind scheme
+  
+!     1. DETERMINE LARGE SCALE TENDENCIES
+!        --------------------------------
+
+!     1.1 lowest model level above surface : only downward component
+
+  
+  do j=2,j1
+    do i=2,i1
+      k = 1
+      if (whls_dzh(2).lt.0) then !neglect effect of mean ascending on tendencies at the lowest full level
+        subs_thl     = 0.5*whls_dzh(2)  *(thl0(i,j,2)-thl0(i,j,1))
+        subs_qt      = 0.5*whls_dzh(2)  *(qt0(i,j,2)-qt0(i,j,1) )
+        thlp(i,j,1) = thlp(i,j,1) -subs_thl
+        qtp(i,j,1)  = qtp (i,j,1) -subs_qt + dqtdtls(1)
+
+        if (lmomsubs) then
+          subs_u     = 0.5*whls_dzh(2)  *(u0(i,j,2)-u0(i,j,1))
+          subs_v     = 0.5*whls_dzh(2)  *(v0(i,j,2)-v0(i,j,1))
+          up  (i,j,1) = up  (i,j,1) -subs_u
+          vp  (i,j,1) = vp  (i,j,1) -subs_v
+
+        endif
+        do n=1,nsv
+          subs_sv =  0.5*whls_dzh(2)  *(sv0(i,j,2,n)-sv0(i,j,1,n)  )
+          svp(i,j,1,n) = svp(i,j,1,n)-subs_sv
+        enddo
+     else
+        qtp(i,j,1)  = qtp (i,j,1) + dqtdtls(1)
+     endif
+    end do
+  end do
+
+!     1.2 other model levels twostream
+
+  do k=2,kmax
+    kp=k+1
+    km=k-1
+    do j=2,j1
+      do i=2,i1
+        if (whls_dzh(kp).lt.0) then   !downwind scheme for subsidence
+          subs_thl    = whls_dzh(kp) * (thl0(i,j,kp) - thl0(i,j,k))
+          subs_qt     = whls_dzh(kp) * (qt0 (i,j,kp) - qt0 (i,j,k))
+          thlp(i,j,k) = thlp(i,j,k) - subs_thl
+          qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
+          if (lmomsubs) then
+            subs_u    = whls_dzh(kp) * (u0(i,j,kp) - u0(i,j,k))
+            subs_v    = whls_dzh(kp) * (v0(i,j,kp) - v0(i,j,k))
+            up  (i,j,k) = up  (i,j,k) - subs_u
+            vp  (i,j,k) = vp  (i,j,k) - subs_v
+          endif
+          do n=1,nsv
+            subs_sv   = whls_dzh(kp)  *(sv0(i,j,kp,n) - sv0(i,j,k,n))
+            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+          enddo
+        else !downwind scheme for mean upward motions
+          subs_thl    = whls_dzh(k) * (thl0(i,j,k) - thl0(i,j,km))
+          subs_qt     = whls_dzh(k) * (qt0 (i,j,k) - qt0 (i,j,km))
+          thlp(i,j,k) = thlp(i,j,k) - subs_thl
+          qtp (i,j,k) = qtp (i,j,k) - subs_qt + dqtdtls(k)
+                  
+          if (lmomsubs) then
+            subs_u    = whls_dzh(k) * (u0(i,j,k) - u0(i,j,km))
+            subs_v    = whls_dzh(k) * (v0(i,j,k) - v0(i,j,km))
+            up  (i,j,k) = up  (i,j,k) - subs_u
+            vp  (i,j,k) = vp  (i,j,k) - subs_v
+          endif
+          do n=1,nsv
+            subs_sv   = whls_dzh(k) * (sv0(i,j,k,n) - sv0(i,j,km,n))
+            svp(i,j,k,n) = svp(i,j,k,n)-subs_sv
+          enddo
+        endif
+
+
+      enddo
+    enddo
+  enddo
+
+  return
+end subroutine lstend
+
+
+! original version of lstend
+subroutine lstend_old
 
 !-----------------------------------------------------------------|
 !                                                                 |
@@ -302,6 +507,7 @@ contains
   enddo
 
   return
-  end subroutine lstend
+  end subroutine lstend_old
 
+  
 end module modforces
