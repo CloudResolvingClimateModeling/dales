@@ -612,3 +612,190 @@ end subroutine advec_252
 
 
 
+!> Advection of all velocities
+!> copy-paste of advec_52, merged into one double loop for the surface, and one triple loop for the bulk
+!> try merging only the outer loops
+subroutine advec_352()
+  use modglobal, only : i1,ih,j1,jh,k1,kmax,dxi5,dyi5,dzf,dzh,dxi,dyi
+  use modfields, only : u0, up, v0, vp, w0, wp, rhobf, rhobh
+  implicit none
+
+  integer :: i,j,k,ib,jb
+  real ::  inv2dzfk, rhobf_p, rhobf_m
+  k = 1
+  inv2dzfk = 1./(2. * dzf(k))
+  rhobf_p = rhobf(k+1)/rhobf(k)
+  
+  do j=2,j1
+     do i=2,i1
+                up(i,j,k)  = up(i,j,k)- ( &
+              (&
+                  (u0(i+1,j,k)+u0(i,j,k))/60.&
+                  *(37.*(u0(i+1,j,k)+u0(i,j,k))-8.*(u0(i+2,j,k)+u0(i-1,j,k))+(u0(i+3,j,k)+u0(i-2,j,k)))&
+                  -sign(1.,(u0(i+1,j,k)+u0(i,j,k)))*(u0(i+1,j,k)+u0(i,j,k))/60.&
+                  *(10.*(u0(i+1,j,k)-u0(i,j,k))-5.*(u0(i+2,j,k)-u0(i-1,j,k))+(u0(i+3,j,k)-u0(i-2,j,k)))&
+                  -(u0(i,j,k)+u0(i-1,j,k))/60.&
+                  *(37.*(u0(i,j,k)+u0(i-1,j,k))-8.*(u0(i+1,j,k)+u0(i-2,j,k))+(u0(i+2,j,k)+u0(i-3,j,k)))&
+                  +sign(1.,(u0(i,j,k)+u0(i-1,j,k)))*(u0(i,j,k)+u0(i-1,j,k))/60.&
+                  *(10.*(u0(i,j,k)-u0(i-1,j,k))-5.*(u0(i+1,j,k)-u0(i-2,j,k))+(u0(i+2,j,k)-u0(i-3,j,k)))&
+              )*dxi5 &
+            +(&
+                  (v0(i,j+1,k)+v0(i-1,j+1,k))/60.&
+                  *(37.*(u0(i,j+1,k)+u0(i,j,k))-8.*(u0(i,j+2,k)+u0(i,j-1,k))+(u0(i,j+3,k)+u0(i,j-2,k)))&
+                  -sign(1.,(v0(i,j+1,k)+v0(i-1,j+1,k)))*(v0(i,j+1,k)+v0(i-1,j+1,k))/60.&
+                  *(10.*(u0(i,j+1,k)-u0(i,j,k))-5.*(u0(i,j+2,k)-u0(i,j-1,k))+(u0(i,j+3,k)-u0(i,j-2,k)))&
+                  -(v0(i,j,k)+v0(i-1,j,k))/60.&
+                  *(37.*(u0(i,j,k)+u0(i,j-1,k))-8.*(u0(i,j+1,k)+u0(i,j-2,k))+(u0(i,j+2,k)+u0(i,j-3,k)))&
+                  +sign(1.,(v0(i,j,k)+v0(i-1,j,k)))*(v0(i,j,k)+v0(i-1,j,k))/60.&
+                  *(10.*(u0(i,j,k)-u0(i,j-1,k))-5.*(u0(i,j+1,k)-u0(i,j-2,k))+(u0(i,j+2,k)-u0(i,j-3,k)))&
+              )* dyi5 &
+            +(1./rhobf(k))*( &
+              ( rhobf(k+1)*u0(i,j,k+1) + rhobf(k) * u0(i,j,k)) *(w0(i,j,k+1)+ w0(i-1,j,k+1)) &
+              ) / (4.*dzf(k)) &
+              )
+
+
+                vp(i,j,k)  = vp(i,j,k)- ( &
+              ( &
+                  (u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
+                  *(37.*(v0(i+1,j,k)+v0(i,j,k))-8.*(v0(i+2,j,k)+v0(i-1,j,k))+(v0(i+3,j,k)+v0(i-2,j,k)))&
+                  -sign(1.,(u0(i+1,j,k)+u0(i+1,j-1,k)))*(u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
+                  *(10.*(v0(i+1,j,k)-v0(i,j,k))-5.*(v0(i+2,j,k)-v0(i-1,j,k))+(v0(i+3,j,k)-v0(i-2,j,k)))&
+                  -(u0(i,j,k)+u0(i,j-1,k))/60.&
+                  *(37.*(v0(i,j,k)+v0(i-1,j,k))-8.*(v0(i+1,j,k)+v0(i-2,j,k))+(v0(i+2,j,k)+v0(i-3,j,k)))&
+                  +sign(1.,(u0(i,j,k)+u0(i,j-1,k)))*(u0(i,j,k)+u0(i,j-1,k))/60.&
+                  *(10.*(v0(i,j,k)-v0(i-1,j,k))-5.*(v0(i+1,j,k)-v0(i-2,j,k))+(v0(i+2,j,k)-v0(i-3,j,k)))&
+                )*dxi5&
+              +(&
+                  (v0(i,j+1,k)+v0(i,j,k))/60.&
+                  *(37.*(v0(i,j+1,k)+v0(i,j,k))-8.*(v0(i,j+2,k)+v0(i,j-1,k))+(v0(i,j+3,k)+v0(i,j-2,k)))&
+                  -sign(1.,(v0(i,j+1,k)+v0(i,j,k)))*(v0(i,j+1,k)+v0(i,j,k))/60.&
+                  *(10.*(v0(i,j+1,k)-v0(i,j,k))-5.*(v0(i,j+2,k)-v0(i,j-1,k))+(v0(i,j+3,k)-v0(i,j-2,k)))&
+                  -(v0(i,j,k)+v0(i,j-1,k))/60.&
+                  *(37.*(v0(i,j,k)+v0(i,j-1,k))-8.*(v0(i,j+1,k)+v0(i,j-2,k))+(v0(i,j+2,k)+v0(i,j-3,k)))&
+                  +sign(1.,(v0(i,j,k)+v0(i,j-1,k)))*(v0(i,j,k)+v0(i,j-1,k))/60.&
+                  *(10.*(v0(i,j,k)-v0(i,j-1,k))-5.*(v0(i,j+1,k)-v0(i,j-2,k))+(v0(i,j+2,k)-v0(i,j-3,k)))&
+                )* dyi5 &
+              +(1./rhobf(k))*( &
+                (w0(i,j,k+1)+w0(i,j-1,k+1)) *(rhobf(k+1) * v0(i,j,k+1) + rhobf(k) * v0(i,j,k)) &
+                ) / (4. * dzf(k)) &
+                )
+
+     end do
+  end do
+  
+
+  do k=2,kmax
+     inv2dzfk = 1./(2. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)
+     do j=2,j1
+        
+        do i=2,i1           
+           up(i,j,k)  = up(i,j,k)- ( &
+                ( &
+                (u0(i+1,j,k)+u0(i,j,k))/60.&
+                *(37.*(u0(i+1,j,k)+u0(i,j,k))-8.*(u0(i+2,j,k)+u0(i-1,j,k))+(u0(i+3,j,k)+u0(i-2,j,k)))&
+                -sign(1.,(u0(i+1,j,k)+u0(i,j,k)))*(u0(i+1,j,k)+u0(i,j,k))/60.&
+                *(10.*(u0(i+1,j,k)-u0(i,j,k))-5.*(u0(i+2,j,k)-u0(i-1,j,k))+(u0(i+3,j,k)-u0(i-2,j,k)))&
+                -(u0(i,j,k)+u0(i-1,j,k))/60.&
+                *(37.*(u0(i,j,k)+u0(i-1,j,k))-8.*(u0(i+1,j,k)+u0(i-2,j,k))+(u0(i+2,j,k)+u0(i-3,j,k)))&
+                +sign(1.,(u0(i,j,k)+u0(i-1,j,k)))*(u0(i,j,k)+u0(i-1,j,k))/60.&
+                *(10.*(u0(i,j,k)-u0(i-1,j,k))-5.*(u0(i+1,j,k)-u0(i-2,j,k))+(u0(i+2,j,k)-u0(i-3,j,k)))&
+                )*dxi5&
+                )
+           vp(i,j,k)  = vp(i,j,k)- ( &
+              ( &
+                  (u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
+                  *(37.*(v0(i+1,j,k)+v0(i,j,k))-8.*(v0(i+2,j,k)+v0(i-1,j,k))+(v0(i+3,j,k)+v0(i-2,j,k)))&
+                  -sign(1.,(u0(i+1,j,k)+u0(i+1,j-1,k)))*(u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
+                  *(10.*(v0(i+1,j,k)-v0(i,j,k))-5.*(v0(i+2,j,k)-v0(i-1,j,k))+(v0(i+3,j,k)-v0(i-2,j,k)))&
+                  -(u0(i,j,k)+u0(i,j-1,k))/60.&
+                  *(37.*(v0(i,j,k)+v0(i-1,j,k))-8.*(v0(i+1,j,k)+v0(i-2,j,k))+(v0(i+2,j,k)+v0(i-3,j,k)))&
+                  +sign(1.,(u0(i,j,k)+u0(i,j-1,k)))*(u0(i,j,k)+u0(i,j-1,k))/60.&
+                  *(10.*(v0(i,j,k)-v0(i-1,j,k))-5.*(v0(i+1,j,k)-v0(i-2,j,k))+(v0(i+2,j,k)-v0(i-3,j,k)))&
+                )*dxi5)
+
+           wp(i,j,k)  = wp(i,j,k)- ( &
+                (&
+                (u0(i+1,j,k)+u0(i+1,j,k-1))/60.&
+                *(37.*(w0(i+1,j,k)+w0(i,j,k))-8.*(w0(i+2,j,k)+w0(i-1,j,k))+(w0(i+3,j,k)+w0(i-2,j,k)))&
+                -sign(1.,(u0(i+1,j,k)+u0(i+1,j,k-1)))*(u0(i+1,j,k)+u0(i+1,j,k-1))/60.&
+                *(10.*(w0(i+1,j,k)-w0(i,j,k))-5.*(w0(i+2,j,k)-w0(i-1,j,k))+(w0(i+3,j,k)-w0(i-2,j,k)))&
+                -(u0(i,j,k)+u0(i,j,k-1))/60.&
+                *(37.*(w0(i,j,k)+w0(i-1,j,k))-8.*(w0(i+1,j,k)+w0(i-2,j,k))+(w0(i+2,j,k)+w0(i-3,j,k)))&
+                +sign(1.,(u0(i,j,k)+u0(i,j,k-1)))*(u0(i,j,k)+u0(i,j,k-1))/60.&
+                *(10.*(w0(i,j,k)-w0(i-1,j,k))-5.*(w0(i+1,j,k)-w0(i-2,j,k))+(w0(i+2,j,k)-w0(i-3,j,k)))&
+                )*dxi5)
+        end do
+
+           
+        do i=2,i1
+           up(i,j,k)  = up(i,j,k)- ( &
+                  (v0(i,j+1,k)+v0(i-1,j+1,k))/60.&
+                  *(37.*(u0(i,j+1,k)+u0(i,j,k))-8.*(u0(i,j+2,k)+u0(i,j-1,k))+(u0(i,j+3,k)+u0(i,j-2,k)))&
+                  -sign(1.,(v0(i,j+1,k)+v0(i-1,j+1,k)))*(v0(i,j+1,k)+v0(i-1,j+1,k))/60.&
+                  *(10.*(u0(i,j+1,k)-u0(i,j,k))-5.*(u0(i,j+2,k)-u0(i,j-1,k))+(u0(i,j+3,k)-u0(i,j-2,k)))&
+                  -(v0(i,j,k)+v0(i-1,j,k))/60.&
+                  *(37.*(u0(i,j,k)+u0(i,j-1,k))-8.*(u0(i,j+1,k)+u0(i,j-2,k))+(u0(i,j+2,k)+u0(i,j-3,k)))&
+                  +sign(1.,(v0(i,j,k)+v0(i-1,j,k)))*(v0(i,j,k)+v0(i-1,j,k))/60.&
+                  *(10.*(u0(i,j,k)-u0(i,j-1,k))-5.*(u0(i,j+1,k)-u0(i,j-2,k))+(u0(i,j+2,k)-u0(i,j-3,k)))&
+                  )* dyi5
+
+           vp(i,j,k)  = vp(i,j,k)- ( &
+                +(&
+                  (v0(i,j+1,k)+v0(i,j,k))/60.&
+                  *(37.*(v0(i,j+1,k)+v0(i,j,k))-8.*(v0(i,j+2,k)+v0(i,j-1,k))+(v0(i,j+3,k)+v0(i,j-2,k)))&
+                  -sign(1.,(v0(i,j+1,k)+v0(i,j,k)))*(v0(i,j+1,k)+v0(i,j+1,k))/60.&
+                  *(10.*(v0(i,j+1,k)-v0(i,j,k))-5.*(v0(i,j+2,k)-v0(i,j-1,k))+(v0(i,j+3,k)-v0(i,j-2,k)))&
+                  -(v0(i,j,k)+v0(i,j-1,k))/60.&
+                  *(37.*(v0(i,j,k)+v0(i,j-1,k))-8.*(v0(i,j+1,k)+v0(i,j-2,k))+(v0(i,j+2,k)+v0(i,j-3,k)))&
+                  +sign(1.,(v0(i,j,k)+v0(i,j-1,k)))*(v0(i,j,k)+v0(i,j-1,k))/60.&
+                  *(10.*(v0(i,j,k)-v0(i,j-1,k))-5.*(v0(i,j+1,k)-v0(i,j-2,k))+(v0(i,j+2,k)-v0(i,j-3,k)))&
+                )* dyi5 )
+
+           wp(i,j,k)  = wp(i,j,k)- ( &
+                + (&
+                (v0(i,j+1,k)+v0(i,j+1,k-1))/60.&
+                *(37.*(w0(i,j+1,k)+w0(i,j,k))-8.*(w0(i,j+2,k)+w0(i,j-1,k))+(w0(i,j+3,k)+w0(i,j-2,k)))&
+                -sign(1.,(v0(i,j+1,k)+v0(i,j+1,k-1)))*(v0(i,j+1,k)+v0(i,j+1,k-1))/60.&
+                *(10.*(w0(i,j+1,k)-w0(i,j,k))-5.*(w0(i,j+2,k)-w0(i,j-1,k))+(w0(i,j+3,k)-w0(i,j-2,k)))&
+                -(v0(i,j,k)+v0(i,j,k-1))/60.&
+                *(37.*(w0(i,j,k)+w0(i,j-1,k))-8.*(w0(i,j+1,k)+w0(i,j-2,k))+(w0(i,j+2,k)+w0(i,j-3,k)))&
+                +sign(1.,(v0(i,j,k)+v0(i,j,k-1)))*(v0(i,j,k)+v0(i,j,k-1))/60.&
+                *(10.*(w0(i,j,k)-w0(i,j-1,k))-5.*(w0(i,j+1,k)-w0(i,j-2,k))+(w0(i,j+2,k)-w0(i,j-3,k)))&
+                )* dyi5 )
+           
+        end do
+        
+        do i=2,i1
+           up(i,j,k)  = up(i,j,k)- ( &
+                +(1./rhobf(k))*( &
+                (rhobf(k) * u0(i,j,k) + rhobf(k+1) * u0(i,j,k+1) )*(w0(i,j,k+1)+w0(i-1,j,k+1)) &
+                -(rhobf(k) * u0(i,j,k) + rhobf(k-1) * u0(i,j,k-1) )*(w0(i,j,k  )+w0(i-1,j,k  )) &
+                ) / (4. * dzf(k)) )
+
+           vp(i,j,k)  = vp(i,j,k)- ( &
+                +(1./rhobf(k))*( &
+                (w0(i,j,k+1)+w0(i,j-1,k+1))*(rhobf(k+1) * v0(i,j,k+1) + rhobf(k) * v0(i,j,k)) &
+                -(w0(i,j,k) +w0(i,j-1,k))  *(rhobf(k-1) * v0(i,j,k-1) + rhobf(k) * v0(i,j,k)) &
+                ) / (4. * dzf(k)) &
+                )
+           wp(i,j,k)  = wp(i,j,k)- ( &
+                + (1./rhobh(k))*( &
+                (rhobh(k) * w0(i,j,k) + rhobh(k+1) * w0(i,j,k+1) )*(w0(i,j,k) + w0(i,j,k+1)) &
+                -(rhobh(k) * w0(i,j,k) + rhobh(k-1) * w0(i,j,k-1) )*(w0(i,j,k) + w0(i,j,k-1)) &
+                )/ (4. * dzh(k)) &
+                )
+        end do
+
+        
+      end do
+    end do
+
+end subroutine advec_352
+
+
+
+
+

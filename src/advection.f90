@@ -65,6 +65,8 @@ subroutine advection
       ! all advection functions merged into one
    case (252)
       call advec_252()
+   case (352)
+      call advec_352()
       ! all velocity advection functions merged into one       
    case(iadv_null)
       ! null advection scheme 
