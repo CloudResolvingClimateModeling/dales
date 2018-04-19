@@ -39,11 +39,12 @@ module daleslib
     real, allocatable :: v_tend(:)
     real, allocatable :: thl_tend(:)
     real, allocatable :: qt_tend(:)
+    real, allocatable :: ql_tend(:)  ! Only used whith local nudging
     real, allocatable :: ql_ref(:)   ! QL profile from global model - not a tendency
     real, allocatable :: qt_alpha(:)
     real :: ps_tend
 
-    logical l_multiplicative_qt, l_force_fluctuations
+    logical l_multiplicative_qt, l_force_fluctuations, l_local_forcing
 
     
     contains
@@ -174,12 +175,14 @@ module daleslib
           allocate(v_tend(1:kmax))
           allocate(thl_tend(1:kmax))
           allocate(qt_tend(1:kmax))
+          allocate(ql_tend(1:kmax))
           allocate(ql_ref(1:kmax))
           allocate(qt_alpha(1:kmax))
           u_tend = 0
           v_tend = 0
           thl_tend = 0
           qt_tend = 0
+          ql_tend = 0
           ql_ref = 0
           ! lforce_user = .true.
           ps_tend = 0
@@ -187,6 +190,7 @@ module daleslib
           
           l_multiplicative_qt = .false.
           l_force_fluctuations = .false.
+          l_local_forcing = .false.
 
         end subroutine initdaleslib
 
@@ -198,6 +202,7 @@ module daleslib
           deallocate(v_tend)
           deallocate(thl_tend)
           deallocate(qt_tend)
+          deallocate(ql_tend)
           deallocate(ql_ref)
           deallocate(qt_alpha)
           
@@ -224,14 +229,21 @@ module daleslib
         
         
         subroutine force_tendencies
+          use modmpi,      only : mpierr
           use modglobal,   only : i1,j1,imax,jmax,kmax
-          use modfields,   only : up,vp,thlp,qtp,qt0,qt0av,ql0av         
+          use modfields,   only : up,vp,thlp,qtp,qt0,qt0av,ql0,ql0av,qsat         
 
           implicit none
           integer k
-          real qt_avg, alpha
-          real qtp_local (2:i1, 2:j1), qtp_local_lim (2:i1, 2:j1), qtp_lost
+          real qt_avg, alpha, qlt, qvt
+          real qtp_local (2:i1, 2:j1), qtp_local_lim (2:i1, 2:j1), qtp_lost, al(1:kmax)
 
+          if (l_local_forcing) then
+             al = 0
+             if (gathersatfrac(al) == mpierr) then
+                 return
+             endif
+          endif
 
           do k=1,kmax
              up  (2:i1,2:j1,k) = up  (2:i1,2:j1,k) + u_tend(k) 
@@ -273,7 +285,11 @@ module daleslib
                 qtp_lost = sum(qtp_local - qtp_local_lim) ! < 0 if the cut-off was activated
                 ! NOTE !  the correction is per thread for simplicity
                 
-                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qtp_local_lim                
+                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qtp_local_lim
+             elseif (l_local_forcing) then
+                qlt = ql_tend(k)
+                qvt = (qt_tend(k) + al(k)*qlt)/(1 - al(k))
+                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k) + merge(qlt,qvt,ql0(2:i1,2:j1,k) > 0)
              endif
                 
              ! multiplicative correcion of qt
@@ -714,6 +730,25 @@ module daleslib
       endif
     end function gatherlayeravg
 
+
+    ! Counts the profile of saturated grid cell fraction and scatters the result to all processes
+    function gathersatfrac(Ag) result(ret)
+      use mpi, only: mpi_allreduce, MPI_SUM
+      use modmpi, only: comm3d, my_real, nprocs
+      use modglobal,   only : i1, j1
+      use modfields, only: ql0
+      real,    intent(out)    :: Ag(:)
+      integer                 :: k, nk, ret
+
+      nk = size(ql0, 3)
+      Ag = (/ (sum(merge(1., 0., ql0(2:i1,2:j1,k) > 0.)), k=1,nk) /)     ! sum layers of ql
+
+      CALL mpi_allreduce(Ag, Ag, nk, MY_REAL, MPI_SUM, comm3d, ret)
+
+      Ag = Ag / (size(ql0,1) * size(ql0,2) * nprocs)
+    
+    end function gathersatfrac
+
     ! Retrieves the z-layer average of the ice fraction of the condensed water ql
     ! ilratio is calculated from the temperature, as in simpleice and icethermo routines.
     ! note: assumes the qi array is large enough (kmax elements)
@@ -892,19 +927,12 @@ module daleslib
       real,    intent(in)     :: ql(:,:,:)
       integer, intent(in)     :: I(:)
       real,    intent(out)    :: A(:)
-      integer                 :: ii, k, k1, k2, nk, ret
-      integer                 :: Ni, Nj
+      integer                 :: ii, k, k1, k2, ret
 
-      Ni = size(ql, 1)
-      Nj = size(ql, 2)
-      
-      
       k1 = 1                    ! start of k-range
       do ii = 1, size(I)
          k2 = I(ii)             ! end of k-range
-
          A(ii) = count (sum (ql(:,:,k1:k2-1), dim=3) > 0)  ! count how many columns in the current slab contains non-zero ql
-
          k1 = I(ii)
       enddo
       
