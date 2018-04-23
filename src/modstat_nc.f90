@@ -92,8 +92,8 @@ contains
     if (.not.exans) then
 
       call date_and_time(date,time)
-      !iret = nf90_create(fname,NF90_SHARE,ncid)
-      iret = nf90_create(fname,ior(NF90_SHARE,NF90_HDF5)  ,ncid)  ! force netcdf4 to make compression work
+      iret = nf90_create(fname,NF90_SHARE,ncid)
+      !iret = nf90_create(fname,ior(NF90_SHARE,NF90_HDF5)  ,ncid)  ! force netcdf4 to make compression work
       ! note - files cannot be read until Dales is done
       
       iret = nf90_put_att(ncid,NF90_GLOBAL,'title',fname)
@@ -155,7 +155,8 @@ contains
         allocate (xtimes(nrec))
         iret = nf90_get_var(ncid, timeId, xtimes(1:nrec))
 
-        do while(xtimes(ncall+1) < rtimee - spacing(1.))
+        ! do while(xtimes(ncall+1) < rtimee - spacing(1.))
+        do while(xtimes(ncall+1) <= rtimee )  ! FJ, trying to preserve the cross section saved at the restart time
             ncall=ncall+1
             if (ncall >= nrec) exit
         end do
