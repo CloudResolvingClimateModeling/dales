@@ -274,7 +274,10 @@ module daleslib
              
              if (qt_forcing_type == QT_FORCING_LOCAL) then
                 qlt = ql_tend(k)
-                qvt = (qt_tend(k) + al(k)*qlt)/(1 - al(k))
+
+                if (1 - al(k) /= 0) then  ! avoid divide-by-0
+                   qvt = (qt_tend(k) + al(k)*qlt)/(1 - al(k))
+                end if
                 qtp_local = merge(qlt,qvt,ql0(2:i1,2:j1,k) > 0)  ! (ql0>0) ? qlt : qvt
              endif                
 
@@ -764,7 +767,7 @@ module daleslib
 
     ! Counts the profile of saturated grid cell fraction and scatters the result to all processes
     function gathersatfrac(Ag) result(ret)
-      use mpi, only: mpi_allreduce, MPI_SUM
+      use mpi, only: MPI_SUM
       use modmpi, only: comm3d, my_real, nprocs
       use modglobal,   only : i1, j1
       use modfields, only: ql0
