@@ -37,7 +37,8 @@ module daleslib
     integer, parameter :: QT_FORCING_GLOBAL=0
     integer, parameter :: QT_FORCING_LOCAL=1
     integer, parameter :: QT_FORCING_VARIANCE=2
-    integer, parameter :: QT_CORRECTION_NONE=-1
+
+    integer, parameter :: QT_CORRECTION_NONE=-1    ! currently not used
     integer, parameter :: QT_CORRECTION_REGULAR=0
     integer, parameter :: QT_CORRECTION_RESCALE=1
     
@@ -249,6 +250,7 @@ module daleslib
           if (qt_forcing_type == QT_FORCING_LOCAL) then
              al = 0
              if (gathersatfrac(al) == mpierr) then
+                 write(ifmessages,*) "MPI error in force_tendencies!"
                  return
              endif
           endif
@@ -257,9 +259,50 @@ module daleslib
              up  (2:i1,2:j1,k) = up  (2:i1,2:j1,k) + u_tend(k) 
              vp  (2:i1,2:j1,k) = vp  (2:i1,2:j1,k) + v_tend(k) 
              thlp(2:i1,2:j1,k) = thlp(2:i1,2:j1,k) + thl_tend(k)
+
+
              qtp_lost = 0
 
+             if (qt_forcing_type == QT_FORCING_GLOBAL) then
+                qtp_local =  qt_tend(k)
+             end if
+             
              if (qt_forcing_type == QT_FORCING_VARIANCE) then
+                ! force fluctuations of qt, with a forcing profile given by alpha(k)
+                qtp_local = (qt0(2:i1,2:j1,k) - qt0av(k)) * qt_alpha(k) + qt_tend(k)
+             endif
+             
+             if (qt_forcing_type == QT_FORCING_LOCAL) then
+                qlt = ql_tend(k)
+                qvt = (qt_tend(k) + al(k)*qlt)/(1 - al(k))
+                qtp_local = merge(qlt,qvt,ql0(2:i1,2:j1,k) > 0)  ! (ql0>0) ? qlt : qvt
+             endif                
+
+             ! limit the tendency, to avoid qt < 0
+             qtp_local_lim = max (qtp_local, -qt0(2:i1, 2:j1, k)/60.0)
+
+             qtp_lost = sum(qtp_local - qtp_local_lim)
+             ! < 0 if the cut-off was activated
+             ! NOTE !  the correction is per thread for simplicity
+             
+             qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qtp_local_lim  + ( qtp_lost / (imax * jmax) ) 
+
+
+
+          enddo
+        end subroutine force_tendencies
+
+
+!             if (qt_correction_type == QT_CORRECTION_REGULAR) then
+!                ! additive correction of qt
+!                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k) + ( qt_tend(k) +  qtp_lost / (imax * jmax) )
+!             endif
+        
+             ! multiplicative correcion of qt
+!             if (qt_correction_type == QT_CORRECTION_RESCALE) then
+!                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qt0(2:i1,2:j1,k) / qt0av(k) * ( qt_tend(k) +  qtp_lost / (imax * jmax) )
+!             endif
+
              !    ! do this if we don't have enough clouds on this k-level. OpenIFS can have very low but non-zero QL, 
              !    ! we only care if QL large enough. 1e-4 is too high - never happens.
              !    alpha = 0
@@ -287,29 +330,10 @@ module daleslib
              !       write(ifmessages,*) k, 'ql_ref', ql_ref(k), ' <-> ', 'ql0av', ql0av(k), 'adjusting qt fluctuations by', alpha, '. qtp_lost:', qtp_lost
              !    endif
 
-                ! force fluctuations of qt, with a forcing profile given by alpha(k)
-                qtp_local = (qt0(2:i1,2:j1,k) - qt0av(k)) * qt_alpha(k)
-                qtp_local_lim = max (qtp_local, -qt0(2:i1, 2:j1, k)/60.0)
-                qtp_lost = sum(qtp_local - qtp_local_lim) ! < 0 if the cut-off was activated
-                ! NOTE !  the correction is per thread for simplicity
-                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qtp_local_lim
-             endif
-             if (qt_forcing_type == QT_FORCING_LOCAL) then
-                qlt = ql_tend(k)
-                qvt = (qt_tend(k) + al(k)*qlt)/(1 - al(k))
-                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k) + merge(qlt,qvt,ql0(2:i1,2:j1,k) > 0)
-             endif                
-             ! multiplicative correcion of qt
-             if (qt_correction_type == QT_CORRECTION_RESCALE) then
-                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k)  +  qt0(2:i1,2:j1,k) / qt0av(k) * ( qt_tend(k) +  qtp_lost / (imax * jmax) )
-             endif
-             if (qt_correction_type == QT_CORRECTION_REGULAR) then
-                ! additive correction of qt
-                qtp(2:i1,2:j1,k) = qtp(2:i1,2:j1,k) + ( qt_tend(k) +  qtp_lost / (imax * jmax) )
-             endif
-          enddo
-        end subroutine force_tendencies
 
+
+
+        
         ! find min and max value of all tendencies. Check that they are within reasonable boundaries.
         ! if not, print a message including 'msg' and the min/max values of all the tendencies.
         subroutine check_tend(msg)
