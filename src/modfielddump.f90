@@ -104,7 +104,7 @@ contains
       ! call ncinfo(ncname( 8,:),'buoy','Buoyancy','K','tttt')
 
       call ncinfo(ncname( 1,:),'ql','Liquid water specific humidity','1e-5kg/kg','tttt')
-      call ncinfo(ncname( 2,:),'qr','Rain water specific humidity','1e-5kg/kg','tttt')
+      ! call ncinfo(ncname( 2,:),'qr','Rain water specific humidity','1e-5kg/kg','tttt')
       
       call open_nc(fname,  ncid,nrec,n1=imax,n2=jmax,n3=khigh-klow+1)
       if (nrec==0) then
