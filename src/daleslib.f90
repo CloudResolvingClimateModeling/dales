@@ -37,10 +37,6 @@ module daleslib
     integer, parameter :: QT_FORCING_GLOBAL=0
     integer, parameter :: QT_FORCING_LOCAL=1
     integer, parameter :: QT_FORCING_VARIANCE=2
-
-    integer, parameter :: QT_CORRECTION_NONE=-1    ! currently not used
-    integer, parameter :: QT_CORRECTION_REGULAR=0
-    integer, parameter :: QT_CORRECTION_RESCALE=1
     
     integer :: my_task, master_task
 
@@ -54,7 +50,7 @@ module daleslib
 
     real :: ps_tend
 
-    integer :: qt_forcing_type, qt_correction_type
+    integer :: qt_forcing_type
 
     
     contains
@@ -199,7 +195,6 @@ module daleslib
           qt_alpha = 0
           
           qt_forcing_type = QT_FORCING_GLOBAL
-          qt_correction_type = QT_CORRECTION_REGULAR
 
         end subroutine initdaleslib
 
