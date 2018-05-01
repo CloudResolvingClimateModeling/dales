@@ -50,7 +50,7 @@ module daleslib
 
     real :: ps_tend
 
-    integer :: qt_forcing_type
+    integer :: qt_forcing_type = QT_FORCING_GLOBAL
 
     
     contains
@@ -171,7 +171,9 @@ module daleslib
         end subroutine initialize
 
 
-        ! allocate arrays for tendencies set through the daleslib interface        
+        ! allocate arrays for tendencies set through the daleslib interface
+        ! NOTE don't initialize parameters here - this is called after
+        ! parameters have been set
         subroutine initdaleslib
           use modglobal, only: kmax
           ! use modforces, only: lforce_user
@@ -193,8 +195,7 @@ module daleslib
           ! lforce_user = .true.
           ps_tend = 0
           qt_alpha = 0
-          
-          qt_forcing_type = QT_FORCING_GLOBAL
+         
 
         end subroutine initdaleslib
 
@@ -242,6 +243,8 @@ module daleslib
           real qt_avg, alpha, qlt, qvt
           real qtp_local (2:i1, 2:j1), qtp_local_lim (2:i1, 2:j1), qtp_lost, al(1:kmax)
 
+          ! write(ifmessages,*) "force_tendencies() : qt_forcing_type =", qt_forcing_type
+          
           if (qt_forcing_type == QT_FORCING_LOCAL) then
              al = 0
              if (gathersatfrac(al) == mpierr) then
@@ -762,7 +765,7 @@ module daleslib
 
     ! Counts the profile of saturated grid cell fraction and scatters the result to all processes
     function gathersatfrac(Ag) result(ret)
-      use mpi, only: MPI_SUM
+      use mpi, only: MPI_SUM, MPI_IN_PLACE
       use modmpi, only: comm3d, my_real, nprocs
       use modglobal,   only : i1, j1
       use modfields, only: ql0
@@ -772,7 +775,7 @@ module daleslib
       nk = size(ql0, 3)
       Ag = (/ (sum(merge(1., 0., ql0(2:i1,2:j1,k) > 0.)), k=1,nk) /)     ! sum layers of ql
 
-      CALL mpi_allreduce(Ag, Ag, nk, MY_REAL, MPI_SUM, comm3d, ret)
+      CALL mpi_allreduce(MPI_IN_PLACE, Ag, nk, MY_REAL, MPI_SUM, comm3d, ret)
 
       Ag = Ag / (size(ql0,1) * size(ql0,2) * nprocs)
     
@@ -795,7 +798,7 @@ module daleslib
          qi(k) = 0
          do j = 2,j1
             do i = 2,i1
-               ilratio = max(0.,min(1., (tmp0(i,j,k)-tdn) / (tup-tdn))) ! ice liquid ratio . 0 for ice, 1 for liquid
+               ilratio = max(0.,min(1., (tmp0(i,j,k)-tdn) / (tup-tdn))) ! ice liquid ratio . 0 forice, 1 for liquid
                qi(k) = qi(k) + (1.0 - ilratio) * ql0(i,j,k)              ! amount of ice 
             enddo
          enddo
