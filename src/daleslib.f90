@@ -247,7 +247,7 @@ module daleslib
           
           if (qt_forcing_type == QT_FORCING_LOCAL) then
              al = 0
-             if (gathersatfrac(al) == mpierr) then
+             if (gathersatfrac(al) /= 0) then
                  write(ifmessages,*) "MPI error in force_tendencies!"
                  return
              endif
