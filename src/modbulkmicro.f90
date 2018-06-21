@@ -101,9 +101,9 @@ module modbulkmicro
             ,qcmask    (2-ih:i1+ih,2-jh:j1+jh,k1))
 
 !
-  gamma25=lacz_gamma(2.5)
-  gamma3=2.
-  gamma35=lacz_gamma(3.5)
+!  gamma25=lacz_gamma(2.5)
+!  gamma3=2.
+!  gamma35=lacz_gamma(3.5)
 
   end subroutine initbulkmicro
 

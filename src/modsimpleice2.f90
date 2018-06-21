@@ -83,19 +83,19 @@ module modsimpleice2
 
     allocate(ccrz(k1),ccsz(k1),ccgz(k1))
     allocate(ccrz2(k1),ccsz2(k1),ccgz2(k1))
+    gamb1r=lacz_gamma(dble(bbr+1))
+     gambd1r=lacz_gamma(dble(bbr+ddr+1))
+     gamb1s=lacz_gamma(dble(bbs+1))
+     gambd1s=lacz_gamma(dble(bbs+dds+1))
+     gamb1g=lacz_gamma(dble(bbg+1))
+     gambd1g=lacz_gamma(dble(bbg+ddg+1))
+     gam2dr=lacz_gamma(dble(2.5+0.5*ddr))
+     gam2ds=lacz_gamma(dble(2.5+0.5*dds))
+     gam2dg=lacz_gamma(dble(2.5+0.5*ddg))
+     gammaddr3=lacz_gamma(dble(3.+ddr))
+     gammadds3=lacz_gamma(dble(3.+dds))
+     gammaddg3=lacz_gamma(dble(3.+ddg))
 
-     gamb1r=lacz_gamma(bbr+1)
-     gambd1r=lacz_gamma(bbr+ddr+1)
-     gamb1s=lacz_gamma(bbs+1)
-     gambd1s=lacz_gamma(bbs+dds+1)
-     gamb1g=lacz_gamma(bbg+1)
-     gambd1g=lacz_gamma(bbg+ddg+1)
-     gam2dr=lacz_gamma(2.5+0.5*ddr)
-     gam2ds=lacz_gamma(2.5+0.5*dds)
-     gam2dg=lacz_gamma(2.5+0.5*ddg)
-     gammaddr3=lacz_gamma(3.+ddr)
-     gammadds3=lacz_gamma(3.+dds)
-     gammaddg3=lacz_gamma(3.+ddg)
 
      
      ! Density corrected fall speed parameters, see Tomita 2008

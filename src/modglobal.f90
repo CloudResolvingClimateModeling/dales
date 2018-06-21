@@ -58,7 +58,8 @@ save
       logical :: llsadv   = .false. !<  switch for large scale forcings
 
       !< Parameter kinds, for rrtmg radiation scheme
-      integer, parameter :: kind_rb = selected_real_kind(12) ! 8 byte real
+      !integer, parameter :: kind_rb = selected_real_kind(12) ! 8 byte real
+      integer, parameter :: kind_rb = selected_real_kind(4) ! 4 byte real
       integer, parameter :: kind_im = selected_int_kind(6)   ! 4 byte integer
       integer,parameter  :: SHR_KIND_R4 = selected_real_kind( 6) ! 4 byte real
       integer,parameter  :: SHR_KIND_IN = kind(1)   ! native integer
@@ -336,8 +337,8 @@ contains
     mygamma251(-100)=0.
     mygamma21(-100)=0.
     do m=-99,4000
-    mygamma251(m)=max(lacz_gamma(m/100.+2.5)/lacz_gamma(m/100.+1.)*( ((m/100.+3)*(m/100.+2)*(m/100.+1))**(-1./2.) ),0.)
-    mygamma21(m)=max(lacz_gamma(m/100.+2.)/lacz_gamma(m/100.+1.)*( ((m/100.+3)*(m/100.+2)*(m/100.+1))**(-1./3.) ),0.)
+    !mygamma251(m)=max(lacz_gamma(m/100.+2.5)/lacz_gamma(m/100.+1.)*( ((m/100.+3)*(m/100.+2)*(m/100.+1))**(-1./2.) ),0.)
+    !mygamma21(m)=max(lacz_gamma(m/100.+2.)/lacz_gamma(m/100.+1.)*( ((m/100.+3)*(m/100.+2)*(m/100.+1))**(-1./3.) ),0.)
     end do
 
     ! Select advection scheme for scalars. If not set in the options file, the momentum scheme is used
