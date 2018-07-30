@@ -131,6 +131,7 @@ save
 
   real, allocatable :: qsat(:,:,:)
 
+  real, allocatable :: surf_rain(:,:)               !< integrated surface rain 
 contains
 !> Allocate and initialize the prognostic variables
 subroutine initfields
@@ -232,6 +233,8 @@ subroutine initfields
     allocate(LW_dn_TOA(2-ih:i1+ih,2-jh:j1+jh))
 
     allocate(qsat(2-ih:i1+ih,2-jh:j1+jh,k1))
+
+    allocate(surf_rain(2-ih:i1+ih,2-jh:j1+jh))
     
     um=0.;u0=0.;up=0.
     vm=0.;v0=0.;vp=0.
@@ -254,6 +257,7 @@ subroutine initfields
 
     cloudarea=0.;cloudnr=0.;cloudnrold=0.;distcld=0.;distcr=0.;distqr=0.;distdiv=0.;distcon=0.;distbuoy=0.;distw=0.
 
+    surf_rain = 0
   end subroutine initfields
 
 !> Deallocate the fields
@@ -272,6 +276,7 @@ subroutine initfields
     deallocate(cloudarea,cloudnr,cloudnrold,distcld,distcr,distqr,distdiv,distcon,distbuoy,distw)
     deallocate(qvsl,qvsi,esl)
     deallocate(qsat)
+    deallocate(surf_rain)
     end subroutine exitfields
 
 end module modfields

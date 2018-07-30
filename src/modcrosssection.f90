@@ -45,7 +45,7 @@ save
   integer,allocatable :: nrec2(:)
   integer :: nrec3 = 0
   integer :: nrec4 = 0
-  integer::nvar4 = 3 !number of surface variables stored
+  integer::nvar4 = 4 !number of surface variables stored
   
   integer :: crossheight(100)
   integer :: nxy = 0
@@ -62,7 +62,7 @@ save
   character(80),dimension(1,4) :: tncname2
   character(80),dimension(nvar,4) :: ncname3
   character(80),dimension(1,4) :: tncname3
-  character(80),dimension(3,4) :: ncname4
+  character(80),dimension(4,4) :: ncname4
   character(80),dimension(1,4) :: tncname4
 
 
@@ -209,9 +209,10 @@ contains
     fname4(9:16) = cmyid
     fname4(18:20) = cexpnr
     call nctiminfo(tncname4(1,:))
-    call ncinfo(ncname4( 1,:),'lwp','Liquid Water Path','kg/m2','tt0t')
-    call ncinfo(ncname4( 2,:),'rwp','Rain Water Path','kg/m2','tt0t')
-    call ncinfo(ncname4( 3,:),'twp','Total Water Path','kg/m2','tt0t')
+    call ncinfo(ncname4( 1,:),'lwp', 'Liquid Water Path','kg/m2','tt0t')
+    call ncinfo(ncname4( 2,:),'rwp', 'Rain Water Path',  'kg/m2','tt0t')
+    call ncinfo(ncname4( 3,:),'twp', 'Total Water Path', 'kg/m2','tt0t')
+    call ncinfo(ncname4( 4,:),'rain','Accumulated rain', 'kg/m2','tt0t')
     call open_nc(fname4,  ncid4,nrec4,n1=imax,n2=jmax)
     if (nrec4==0) then
        call define_nc( ncid4, 1, tncname4)
@@ -570,7 +571,7 @@ contains
 
   subroutine wrtsurf
     use modglobal, only : imax,jmax,kmax,i1,j1,nsv,rlv,cp,rv,rd,cu,cv,cexpnr,ifoutput,rtimee,dzf,nsv
-    use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,exnf,thvf,cloudnr,rhobf,sv0
+    use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,exnf,thvf,cloudnr,rhobf,sv0,surf_rain
     use modmpi,    only : cmyid
     use modstat_nc, only : lnetcdf, writestat_nc
     use modmicrodata, only : iqr
@@ -597,6 +598,7 @@ contains
             ! note compensate for ghost cells - no ghost cells in vars
          enddo
       enddo
+      vars(:,:,4) = surf_rain(2:i1,2:j1)
 
 
       call writestat_nc(ncid4,1,tncname4,(/rtimee/),nrec4,.true.)
