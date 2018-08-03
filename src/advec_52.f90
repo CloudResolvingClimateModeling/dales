@@ -209,7 +209,8 @@ subroutine advecu_52(putin,putout)
 
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(in)  :: putin !< Input: the u field
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(inout) :: putout !< Output: the tendency
-
+  real                                       :: inv4dzfk, rhobf_p, rhobf_m
+  
   integer :: i,j,k
 
 if (leq) then
@@ -246,9 +247,12 @@ if (leq) then
   end do
   
   do k=2,kmax
-    do j=2,j1
+     inv4dzfk = 1./(4. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)
+     do j=2,j1
       do i=2,i1
-
+         
         putout(i,j,k)  = putout(i,j,k)- ( &
               ( &
                   (u0(i+1,j,k)+u0(i,j,k))/60.&
@@ -270,10 +274,10 @@ if (leq) then
                   +sign(1.,(v0(i,j,k)+v0(i-1,j,k)))*(v0(i,j,k)+v0(i-1,j,k))/60.&
                   *(10.*(putin(i,j,k)-putin(i,j-1,k))-5.*(putin(i,j+1,k)-putin(i,j-2,k))+(putin(i,j+2,k)-putin(i,j-3,k)))&
               )* dyi5 &
-            +(1./rhobf(k))*( &
-              (rhobf(k) * putin(i,j,k) + rhobf(k+1) * putin(i,j,k+1) )*(w0(i,j,k+1)+w0(i-1,j,k+1)) &
-             -(rhobf(k) * putin(i,j,k) + rhobf(k-1) * putin(i,j,k-1) )*(w0(i,j,k  )+w0(i-1,j,k  )) &
-              ) / (4. * dzf(k)) &
+              + ( &
+              (putin(i,j,k) + rhobf_p * putin(i,j,k+1) )*(w0(i,j,k+1)+w0(i-1,j,k+1)) &
+             -(putin(i,j,k) + rhobf_m * putin(i,j,k-1) )*(w0(i,j,k  )+w0(i-1,j,k  )) &
+              ) * inv4dzfk &
               )
 
       end do
@@ -314,9 +318,12 @@ else ! non-equidistant grid
   end do
   
   do k=2,kmax
+     inv4dzfk = 1./(4. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)      
     do j=2,j1
-      do i=2,i1
-
+       do i=2,i1
+          
         putout(i,j,k)  = putout(i,j,k)- ( &
               ( &
                   (u0(i+1,j,k)+u0(i,j,k))/60.&
@@ -338,11 +345,11 @@ else ! non-equidistant grid
                   +sign(1.,(v0(i,j,k)+v0(i-1,j,k)))*(v0(i,j,k)+v0(i-1,j,k))/60.&
                   *(10.*(putin(i,j,k)-putin(i,j-1,k))-5.*(putin(i,j+1,k)-putin(i,j-2,k))+(putin(i,j+2,k)-putin(i,j-3,k)))&
               )* dyi5 &
-              +(1./rhobf(k))*( &
-              ( rhobf(k+1) * putin(i,j,k+1)*dzf(k)   + rhobf(k)   * putin(i,j,k)  *dzf(k+1) ) / dzh(k+1)  *( w0(i,j,k+1)+ w0(i-1,j,k+1) ) &
-              -( rhobf(k)  * putin(i,j,k)  *dzf(k-1) + rhobf(k-1) * putin(i,j,k-1)*dzf(k)   ) / dzh(k)    *( w0(i,j,k)  + w0(i-1,j,k)   ) &
-              ) / (4. * dzf(k)) &
-              )
+            + ( &
+                     (putin(i,j,k) * dzf(k+1) + rhobf_p * putin(i,j,k+1) *dzf(k)) * (w0(i,j,k+1)+w0(i-1,j,k+1)) / dzh(k+1) &
+                    -(putin(i,j,k) * dzf(k-1) + rhobf_m * putin(i,j,k-1) *dzf(k)) * (w0(i,j,k  )+w0(i-1,j,k  )) / dzh(k)   &                     
+                ) * inv4dzfk &
+                )  
       end do
     end do
  end do
@@ -361,7 +368,8 @@ subroutine advecv_52(putin, putout)
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(in)  :: putin !< Input: the v field
   real, dimension(2-ih:i1+ih,2-jh:j1+jh,k1), intent(inout) :: putout !< Output: the tendency
   integer :: i,j,k
-
+  real                                       :: inv4dzfk, rhobf_p, rhobf_m
+  
   if (leq) then
 
   k = 1
@@ -396,8 +404,12 @@ subroutine advecv_52(putin, putout)
   end do
   
   do k=2,kmax
-    do j=2,j1
-      do i=2,i1      
+     inv4dzfk = 1./(4. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)
+     do j=2,j1
+        do i=2,i1
+
         putout(i,j,k)  = putout(i,j,k)- ( &
               ( &
                   (u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
@@ -418,13 +430,12 @@ subroutine advecv_52(putin, putout)
                   *(37.*(putin(i,j,k)+putin(i,j-1,k))-8.*(putin(i,j+1,k)+putin(i,j-2,k))+(putin(i,j+2,k)+putin(i,j-3,k)))&
                   +sign(1.,(v0(i,j,k)+v0(i,j-1,k)))*(v0(i,j,k)+v0(i,j-1,k))/60.&
                   *(10.*(putin(i,j,k)-putin(i,j-1,k))-5.*(putin(i,j+1,k)-putin(i,j-2,k))+(putin(i,j+2,k)-putin(i,j-3,k)))&
-                )* dyi5 &
-              +(1./rhobf(k))*( &
-                (w0(i,j,k+1)+w0(i,j-1,k+1))*(rhobf(k+1) * putin(i,j,k+1) + rhobf(k) * putin(i,j,k)) &
-                -(w0(i,j,k) +w0(i,j-1,k))  *(rhobf(k-1) * putin(i,j,k-1) + rhobf(k) * putin(i,j,k)) &
-                ) / (4. * dzf(k)) &
-                )
-
+                  )* dyi5 &
+             + ( &
+                (w0(i,j,k+1)+w0(i,j-1,k+1))*(rhobf_p * putin(i,j,k+1) + putin(i,j,k))&
+                -(w0(i,j,k) +w0(i,j-1,k))  *(rhobf_m * putin(i,j,k-1) + putin(i,j,k))&
+                  ) * inv4dzfk  &
+                  )
       end do
     end do
   end do
@@ -461,8 +472,12 @@ else ! non-equidistant grid
   end do
   
   do k=2,kmax
-    do j=2,j1
-      do i=2,i1      
+     inv4dzfk = 1./(4. * dzf(k))
+     rhobf_p = rhobf(k+1)/rhobf(k)
+     rhobf_m = rhobf(k-1)/rhobf(k)
+     do j=2,j1
+        do i=2,i1
+
         putout(i,j,k)  = putout(i,j,k)- ( &
               ( &
                   (u0(i+1,j,k)+u0(i+1,j-1,k))/60.&
