@@ -92,19 +92,21 @@ contains
 !> Sets lateral periodic boundary conditions for the scalars
  subroutine cyclich
 
-  use modglobal, only : i1,i2,ih,j1,jh,k1,nsv
+  use modglobal, only : i1,i2,ih,j1,jh,k1,nsv,rk3step
   use modfields, only : thl0,thlm,qt0,qtm,sv0,svm
   use modmpi,    only : excjs
   integer n,m
 
   call excjs( thl0           , 2,i1,2,j1,1,k1,ih,jh)
   call excjs( qt0            , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( thlm           , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( qtm            , 2,i1,2,j1,1,k1,ih,jh)
-
+!  if(rk3step == 3 .or. rk3step == 0) then
+!     call excjs( thlm           , 2,i1,2,j1,1,k1,ih,jh)
+!     call excjs( qtm            , 2,i1,2,j1,1,k1,ih,jh)
+!  end if
+  
   do n=1,nsv
     call excjs( sv0(:,:,:,n)   , 2,i1,2,j1,1,k1,ih,jh)
-    call excjs( svm(:,:,:,n)   , 2,i1,2,j1,1,k1,ih,jh)
+!     if(rk3step == 3 .or. rk3step == 0) call excjs( svm(:,:,:,n)   , 2,i1,2,j1,1,k1,ih,jh)
   enddo
 
   return
@@ -113,7 +115,7 @@ contains
 !>set lateral periodic boundary conditions for momentum
  subroutine cyclicm
 
-  use modglobal, only : i1,i2,ih,j1,jh,k1
+  use modglobal, only : i1,i2,ih,j1,jh,k1,rk3step
   use modfields, only : u0,um,v0,vm,w0,wm,e120,e12m
   use modmpi,    only : excjs
 
@@ -122,11 +124,14 @@ contains
   call excjs( u0  , 2,i1,2,j1,1,k1,ih,jh)
   call excjs( v0  , 2,i1,2,j1,1,k1,ih,jh)
   call excjs( w0  , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( um  , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( vm  , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( wm  , 2,i1,2,j1,1,k1,ih,jh)
   call excjs( e120  , 2,i1,2,j1,1,k1,ih,jh)
-  call excjs( e12m  , 2,i1,2,j1,1,k1,ih,jh)
+  
+!  if(rk3step == 3 .or. rk3step == 0) then
+!     call excjs( um  , 2,i1,2,j1,1,k1,ih,jh)
+!     call excjs( vm  , 2,i1,2,j1,1,k1,ih,jh)
+!     call excjs( wm  , 2,i1,2,j1,1,k1,ih,jh)
+!     call excjs( e12m  , 2,i1,2,j1,1,k1,ih,jh)
+!  end if
 
   return
   end subroutine cyclicm
