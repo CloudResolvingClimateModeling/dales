@@ -300,7 +300,7 @@ subroutine tstep_integrate
         
         call slab_avg(e12p, e12p_avg)
         do k=1,kmax
-           e12m(:,:,k) = max(e12min, e12m(:,:,k) + rk3coef * e12p(:,:,k) + rk3coef * (a_acc1 - 1) * up_avg(k))
+           e12m(:,:,k) = max(e12min, e12m(:,:,k) + rk3coef * e12p(:,:,k) + rk3coef * (a_acc1 - 1) * e12p_avg(k))
         enddo
         e120 = e12m
         
