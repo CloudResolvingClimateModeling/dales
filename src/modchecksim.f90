@@ -139,7 +139,7 @@ contains
 !> Calculates the cell peclet number as max(ekm) *deltat/deltax**2
   subroutine calcpeclet
 
-    use modglobal, only : i1,j1,k1,kmax,dx,dy,dzh
+    use modglobal, only : i1,j1,k1,kmax,dx,dy,dzh,a_acc1,rdt
     use modsubgrid,only : ekm, ekh
     use modmpi,    only : myid,comm3d,mpierr,mpi_max,my_real
     implicit none
@@ -158,7 +158,8 @@ contains
 
     call MPI_ALLREDUCE(peclettotl,peclettot,k1,MY_REAL,MPI_MAX,comm3d,mpierr)
     if (myid==0) then
-      write(ifmessages,'(A,ES10.2,I5)') 'Cell Peclet number:',maxval(peclettot(1:kmax)),maxloc(peclettot(1:kmax))
+       write(ifmessages,'(A,ES10.2,I5,A,F5.2,A,F6.2)') 'Cell Peclet number:',maxval(peclettot(1:kmax)),maxloc(peclettot(1:kmax)),&
+            '          a_acc:', a_acc1, ' acc.dt:', rdt*a_acc1
     end if
 
     deallocate(peclettotl,peclettot)

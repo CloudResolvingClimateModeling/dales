@@ -220,6 +220,10 @@ save
       logical :: leq      = .true.  !<  switch for (non)-equidistant mode.
       logical :: lmomsubs = .false.  !<  switch to apply subsidence on the momentum or not
       character(80) :: author='', version='DALES 4.1'
+
+      real :: a_acc  = 1.0    !< mean state acceleration constant (default = 1 - no acceleration)
+      real :: a_acc1 = 1.0    !< mean state acceleration constant of the current step
+
 contains
 
 !> Initialize global settings.

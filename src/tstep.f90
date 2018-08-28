@@ -40,11 +40,16 @@
 !! \end{equation}
 !! and the diffusion number $d$. The timestep is further limited by the needs of other modules, e.g. the statistics.
 !! \endlatexonly
+
+module tstep
+implicit none
+  
+contains
 subroutine tstep_update
 
 
   use modglobal, only : i1,j1,rk3step,timee,rtimee,dtmax,dt,ntimee,ntrun,courant,peclet,dt_reason, &
-                        kmax,dx,dy,dzh,dt_lim,ladaptive,timeleft,idtmax,rdt,tres,longint ,lwarmstart
+                        kmax,dx,dy,dzh,dt_lim,ladaptive,timeleft,idtmax,rdt,tres,longint,lwarmstart, a_acc, a_acc1
   use modfields, only : um,vm,wm
   use modsubgrid,only : ekm,ekh
   use modmpi,    only : comm3d,mpierr,mpi_max,my_real
@@ -56,6 +61,7 @@ subroutine tstep_update
   real          :: courold,peclettotl,pecletold
   logical,save  :: spinup=.true.
 
+    
   allocate(courtotl(kmax),courtot(kmax))
 
   if(lwarmstart) spinup = .false.
@@ -138,18 +144,27 @@ subroutine tstep_update
         call MPI_ALLREDUCE(peclettotl,peclettot,1,MY_REAL,MPI_MAX,comm3d,mpierr)
         dt = min(timee,dt_lim,idtmax,floor(rdt/tres*courant/courtotmax,longint),floor(rdt/tres*peclet/peclettot,longint))
 
-!        dt_reason = minloc((/ 1, 2, 3 /))
-!        dt_reason = minloc((/timee,dt_lim/))
+        ! record which condition is the limiting one
         dt_reason = minloc((/timee,dt_lim,idtmax,floor(rdt/tres*courant/courtotmax,longint),floor(rdt/tres*peclet/peclettot,longint)/), 1)
 
+        ! adjust the acceleration factor for the current step
+        ! to ensure that we don't exceed dt_lim
+        a_acc1 = a_acc
+        if (dt * a_acc > dt_lim) then
+           a_acc1 = dble(dt_lim) / dt
+        end if
+
+        ! dt and rdt are not adjusted by acceleration - they describe the normal time step
+        ! the elapsed time IS adjusted by the acceleration
+        
         rdt = dble(dt)*tres
-        timeleft=timeleft-dt
+        timeleft=timeleft-dt * a_acc1
         dt_lim = timeleft
-        timee   = timee  + dt
+        timee   = timee  + dt * a_acc1
         rtimee  = dble(timee)*tres
         ntimee  = ntimee + 1
         ntrun   = ntrun  + 1
-      else
+      else ! not adaptive
         dt = idtmax
         rdt = dtmax
         ntimee  = ntimee + 1
@@ -165,6 +180,33 @@ subroutine tstep_update
 
 end subroutine tstep_update
 
+
+
+
+ ! Slab average a field
+  subroutine slab_avg(f, favg)
+    use modglobal, only : ih, i1, jh, j1, itot, jtot, kmax
+    use modmpi, only: comm3d, my_real, mpi_sum
+    implicit none
+   
+    real, intent(in)   :: f(:,:,:)
+    real, intent(out)  :: favg(1:kmax)
+    real    :: al(1:kmax)
+    integer :: k, mpierr
+
+    do k=1,kmax
+      al(k) = sum(f(2-ih:i1+ih,2-jh:j1+jh,k))
+    enddo
+
+    call MPI_ALLREDUCE(al, favg, kmax,  MY_REAL, &
+                       MPI_SUM, comm3d, mpierr)
+
+    favg = favg * (1.0 / (itot*jtot))
+    
+  end subroutine slab_avg
+  
+
+    
 
 !> Time integration is done by a third order Runge-Kutta scheme.
 !!
@@ -183,7 +225,7 @@ end subroutine tstep_update
 subroutine tstep_integrate
 
 
-  use modglobal, only : ifmessages,i1,j1,kmax,nsv,rdt,rk3step,e12min,ntimee,rtimee
+  use modglobal, only : ifmessages,i1,j1,kmax,nsv,rdt,rk3step,e12min,ntimee,rtimee,kmax,a_acc1
   use modfields, only : u0,um,up,v0,vm,vp,w0,wm,wp,wp_store,&
                         thl0,thlm,thlp,qt0,qtm,qtp,&
                         e120,e12m,e12p,sv0,svm,svp
@@ -191,7 +233,9 @@ subroutine tstep_integrate
 
   integer i,j,k,n
   real rk3coef
+  real up_avg(1:kmax),  vp_avg(1:kmax),  thlp_avg(1:kmax),  qtp_avg(1:kmax),  e12p_avg(1:kmax)
 
+  
   rk3coef = rdt / (4. - dble(rk3step))
   wp_store = wp
 
@@ -213,38 +257,71 @@ subroutine tstep_integrate
      !      enddo
      !   enddo
      !enddo
-
-
      
      sv0  = svm  + rk3coef * svp
      e120 = max(e12min,e12m + rk3coef * e12p)
+
   else ! step 3 - store result in both ..0 and ..m
-     um   = um   + rk3coef * up
-     u0 = um
-     vm   = vm   + rk3coef * vp
-     v0 = vm
-     wm   = wm   + rk3coef * wp
-     w0 = wm
-     thlm = thlm + rk3coef * thlp
-     thl0 = thlm
-     qtm  = qtm  + rk3coef * qtp
-     !do k=1,kmax
-     !   do j=2,j1
-     !      do i=2,i1
-     !         if (qtm(i,j,k) < 0) then
-     !            write(ifmessages,*) 'Warning: qtm(', i, j, k, ') = ', qtm(i,j,k), 'in tstep_integrate. Setting to 1e-6'
-     !            write(ifmessages,*) 'rk3step:', rk3step, 'ntimee:', ntimee, 'rtimee:', rtimee
-     !            write(ifmessages,*) ' qtp(i,j,k)', qtp(i,j,k), 'rk3coef', rk3coef
-     !            qtm(i,j,k) = 1e-6
-     !         endif
-     !      enddo
-     !   enddo
-     !enddo
-     qt0  = qtm
-     svm  = svm  + rk3coef * svp
-     sv0 = svm
-     e12m = max(e12min,e12m + rk3coef * e12p)
-     e120 = e12m
+     if (a_acc1 /= 1.0) then
+        ! Mean state acceleration, following Jones et al, JAMES 7, 1643 (2015)
+        
+        call slab_avg(up,   up_avg)
+        do k=1,kmax
+           um(:,:,k)   = um(:,:,k)   + rk3coef * up(:,:,k)   + rk3coef * (a_acc1 - 1) * up_avg(k)
+        enddo
+        u0   = um
+
+        call slab_avg(vp,   vp_avg)
+        do k=1,kmax
+           vm(:,:,k)   = vm(:,:,k)   + rk3coef * vp(:,:,k)   + rk3coef * (a_acc1 - 1) * vp_avg(k)
+        enddo
+        v0   = vm
+
+        ! slab average of w is 0 - no need to accelerate
+        wm   = wm   + rk3coef * wp
+        w0   = wm
+        
+        call slab_avg(thlp, thlp_avg)
+        do k=1,kmax
+           thlm(:,:,k) = thlm(:,:,k) + rk3coef * thlp(:,:,k) + rk3coef * (a_acc1 - 1) * thlp_avg(k)
+        enddo
+        thl0 = thlm
+        
+        call slab_avg(qtp,  qtp_avg)
+        do k=1,kmax
+           qtm(:,:,k)  = qtm(:,:,k)  + rk3coef * qtp(:,:,k)  + rk3coef * (a_acc1 - 1) * qtp_avg(k)
+        enddo
+        qt0  = qtm
+        
+        ! like in [Jones 2015] we don't accelerate rain
+        ! NOTE - if scalar values are used for chemicals, they should be accelerated
+        svm  = svm  + rk3coef * svp
+        sv0  = svm
+        
+        call slab_avg(e12p, e12p_avg)
+        do k=1,kmax
+           e12m(:,:,k) = max(e12min, e12m(:,:,k) + rk3coef * e12p(:,:,k) + rk3coef * (a_acc1 - 1) * up_avg(k))
+        enddo
+        e120 = e12m
+        
+     else ! no mean state acceleration  
+        um   = um   + rk3coef * up
+        u0   = um
+        vm   = vm   + rk3coef * vp
+        v0   = vm
+        wm   = wm   + rk3coef * wp
+        w0   = wm
+        thlm = thlm + rk3coef * thlp
+        thl0 = thlm
+        qtm  = qtm  + rk3coef * qtp
+        qt0  = qtm
+        svm  = svm  + rk3coef * svp
+        sv0  = svm
+        e12m = max(e12min,e12m + rk3coef * e12p)
+        e120 = e12m
+     end if
+
+     
   end if
 
   up=0.
@@ -256,3 +333,4 @@ subroutine tstep_integrate
   e12p=0.
 
 end subroutine tstep_integrate
+end module tstep

@@ -389,6 +389,7 @@ module daleslib
             use modradiation,       only : radiation
             use modpois,            only : poisson
             !use modedgecold,       only : coldedge
+            use tstep,             only : tstep_update,  tstep_integrate
 
             !----------------------------------------------------------------
             !     0.1     USE STATEMENTS FOR ADDONS STATISTICAL ROUTINES

@@ -112,6 +112,7 @@ program DALES      !Version 4.0.0alpha
   use modforces,         only : forces, coriolis, lstend
   use modradiation,      only : radiation
   use modpois,           only : poisson
+  use tstep,             only : tstep_update,  tstep_integrate
   !use modedgecold,       only : coldedge
 
 !----------------------------------------------------------------

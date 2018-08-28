@@ -57,7 +57,7 @@ contains
                                   nsv,itot,jtot,kmax,xsize,ysize,xlat,xlon,xyear,xday,xtime,&
                                   lmoist,lcoriol,igrw_damp,geodamptime,lmomsubs,cu, cv,ifnamopt,fname_options,llsadv,&
                                   ibas_prf,lambda_crit,iadv_mom,iadv_tke,iadv_thl,iadv_qt,iadv_sv,courant,peclet,&
-                                  ladaptive,author,lnoclouds,lrigidlid,unudge,outfile
+                                  ladaptive,author,lnoclouds,lrigidlid,unudge,outfile,a_acc
     use modforces,         only : lforce_user
     use modsurfdata,       only : z0,ustin,wtsurf,wqsurf,wsvsurf,ps,thls,isurf
     use modsurface,        only : initsurface
@@ -85,7 +85,7 @@ contains
         iexpnr,lwarmstart,startfile,runtime,dtmax,dtav_glob,timeav_glob,&
         trestart,irandom,randthl,randqt,krand,nsv,courant,peclet,ladaptive,author,&
         krandumin, krandumax, randu, outfile, &
-        nprocx,nprocy
+        nprocx,nprocy,a_acc
     namelist/DOMAIN/ &
         itot,jtot,kmax,&
         xsize,ysize,&
