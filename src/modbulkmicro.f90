@@ -161,12 +161,17 @@ module modbulkmicro
   ! remove neg. values of Nr and qr
   !*********************************************************************
     if (l_rain) then
-       if (sum(qr, qr<0.) > 0.000001*sum(qr)) then
-         write(ifmessages,*)'amount of neg. qr and Nr thrown away is too high  ',timee,' sec'
-       end if
-       if (sum(Nr, Nr<0.) > 0.000001*sum(Nr)) then
-          write(ifmessages,*)'amount of neg. qr and Nr thrown away is too high  ',timee,' sec'
-       end if
+
+       ! these touch un-initialized ghost cells --FJ
+       ! also, sign mistake. the sum of the negative cells will be negative, 
+       ! the sum of all cells alomst always positive, so the test is not triggered
+       !
+       !if (sum(qr, qr<0.) > 0.000001*sum(qr)) then
+       !  write(ifmessages,*)'amount of neg. qr and Nr thrown away is too high  ',timee,' sec'
+       !end if
+       !if (sum(Nr, Nr<0.) > 0.000001*sum(Nr)) then
+       !   write(ifmessages,*)'amount of neg. qr and Nr thrown away is too high  ',timee,' sec'
+       !end if
 
        do j=2,j1
        do i=2,i1

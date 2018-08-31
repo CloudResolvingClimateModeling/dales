@@ -131,6 +131,7 @@ save
       integer, parameter :: iadv_52     = 52
       integer, parameter :: iadv_kappa  = 7
       integer, parameter :: iadv_hybrid = 55
+      integer, parameter :: iadv_hybrid_f = 555
 
       real :: lambda_crit=100. !< maximum value for the smoothness. This controls if WENO or
 
@@ -252,6 +253,8 @@ contains
       case(iadv_52)
         courant = 1.
       case(iadv_hybrid)
+         courant = 1.
+      case(iadv_hybrid_f)
         courant = 1.
       case default
         courant = 1.
@@ -302,6 +305,10 @@ contains
       jh = 3
       kh = 1
     elseif (any(advarr==iadv_hybrid).or.any(iadv_sv(1:nsv)==iadv_hybrid)) then
+      ih = 3
+      jh = 3
+      kh = 1
+    elseif (any(advarr==iadv_hybrid_f).or.any(iadv_sv(1:nsv)==iadv_hybrid_f)) then
       ih = 3
       jh = 3
       kh = 1
