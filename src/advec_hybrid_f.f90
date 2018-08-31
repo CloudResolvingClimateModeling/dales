@@ -41,7 +41,7 @@ subroutine advecc_hybrid_f(pin, pout)
   real :: phi_tilde
   
   logical :: lsmx,lsmy,lsmz                   ! smoothness flags
-  real,dimension(2:i1+1,2:j1+1,k1) :: pfacex,pfacey,pfacez  ! face values, defined at the same interfaces as u0,v0 and w0 respectively
+  real :: pfacex,pfacey,pfacez  ! face values, defined at the same interfaces as u0,v0 and w0 respectively
   real,dimension(3)    :: gam                 ! used for smoothness test
   integer              :: i,j,k
   real                 :: eps_hybrid
@@ -104,7 +104,7 @@ subroutine advecc_hybrid_f(pin, pout)
            vin(-3:2) = pin(i-3:i+2,j,k)
            if (lsmx) then ! field around this location is smooth -> use regular 5th order (upwind)
               sgn = sign(1.0,u0(i,j,k))  ! set sgn, to account for different wind directions
-              pfacex(i,j,k) = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
+              pfacex = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
                    -sgn*(10.*(vin(0)-vin(-1))-5.*(vin(1)-vin(-2))+(vin(2)-vin(-3))))/60.
            else ! field around this location is non-smooth -> use weno
               if (u0(i,j,k) >= 0) then !Positive velocity at cell face
@@ -135,7 +135,7 @@ subroutine advecc_hybrid_f(pin, pout)
               wgtfac = sum(wgt)**(-1)
 
               ! compute interpolated value
-              pfacex(i,j,k) = sum(wgt(:)*varFace(:))*wgtfac
+              pfacex = sum(wgt(:)*varFace(:))*wgtfac
               
            end if
 
@@ -143,7 +143,7 @@ subroutine advecc_hybrid_f(pin, pout)
            vin(-3:2) = pin(i,j-3:j+2,k)
            if (lsmy) then ! field around this location is smooth -> use regular 5th order (upwind)
               sgn = sign(1.0,v0(i,j,k))  ! set sgn, to account for different wind directions
-              pfacey(i,j,k) = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
+              pfacey = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
                    -sgn*(10.*(vin(0)-vin(-1))-5.*(vin(1)-vin(-2))+(vin(2)-vin(-3))))/60.
            else ! field around this location is non-smooth -> use weno
               if (v0(i,j,k) >= 0) then !Positive velocity at cell face
@@ -173,16 +173,16 @@ subroutine advecc_hybrid_f(pin, pout)
               wgtfac = sum(wgt)**(-1)
               
               ! compute interpolated value
-              pfacey(i,j,k) = sum(wgt(:)*varFace(:))*wgtfac
+              pfacey = sum(wgt(:)*varFace(:))*wgtfac
            end if
            
            ! advection in z
            if (k < 4 .or. k >= kmax) then
               ! special treatment of top and bottom layers
               if (k == 1) then
-                 pfacez(i,j,k) = 0
+                 pfacez = 0
               else
-                 pfacez(i,j,k) =  ( rhobf(k)*pin(i,j,k) + rhobf(k-1)*pin(i,j,k-1) ) * .5
+                 pfacez =  ( rhobf(k)*pin(i,j,k) + rhobf(k-1)*pin(i,j,k-1) ) * .5
               end if
            else
 
@@ -201,7 +201,7 @@ subroutine advecc_hybrid_f(pin, pout)
               vin(-3:2) = pin(i,j,k-3:k+2) * rhobf(k-3:k+2)
               if (lsmz) then ! field around this location is smooth -> use regular 5th order (upwind)
                  sgn = sign(1.0,w0(i,j,k))  ! set sgn, to account for different wind directions
-                 pfacez(i,j,k) = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
+                 pfacez = (37.*(vin(0)+vin(-1))-8.*(vin(1)+vin(-2))+(vin(2)+vin(-3)) &
                       -sgn*(10.*(vin(0)-vin(-1))-5.*(vin(1)-vin(-2))+(vin(2)-vin(-3))))/60.
               else ! field around this location is non-smooth -> use weno
                  if (w0(i,j,k) >= 0) then !Positive velocity at cell face
@@ -231,9 +231,17 @@ subroutine advecc_hybrid_f(pin, pout)
                  wgtfac = sum(wgt)**(-1)
               
                  ! compute interpolated value
-                 pfacez(i,j,k) = sum(wgt(:)*varFace(:))*wgtfac
+                 pfacez = sum(wgt(:)*varFace(:))*wgtfac
               end if
            end if
+
+           pout(i,j,k) =  pout(i,j,k) + u0(i,j,k) * pfacex * dxi
+           pout(i,j,k) =  pout(i,j,k) + v0(i,j,k) * pfacey * dyi
+           pout(i,j,k) =  pout(i,j,k) + (1./(rhobf(k)*dzf(k))) * w0(i,j,k) * pfacez
+
+           pout(i-1,j,k) =  pout(i-1,j,k) - u0(i,j,k) * pfacex * dxi
+           pout(i,j-1,k) =  pout(i,j-1,k) - v0(i,j,k) * pfacey * dyi
+           pout(i,j,k-1) =  pout(i,j,k-1) - (1./(rhobf(k-1)*dzf(k-1))) * w0(i,j,k) * pfacez
            
            !kp2=k+2;km3=k-3
            !pfacex(i,j,k) = ip_hybrid(pin(im3:ip2,j,k),u0(i,j,k)>=0.,lsmx(i,j,k))
@@ -245,16 +253,16 @@ subroutine advecc_hybrid_f(pin, pout)
 
   ! Calculate actual tendencies by multiplying matrices, accept in the vertical, since dzf(k)
   ! does not have the appropriate dimensions.
-  do k=1,kmax
-     pout(2:i1,2:j1,k) = pout(2:i1,2:j1,k) - ( &
-          (u0(3:i1+1,2:j1,k)*pfacex(3:i1+1,2:j1,k) -    &
-          u0(2:i1,2:j1,k)*pfacex(2:i1,2:j1,k) )*dxi    &
-          +(v0(2:i1,3:j1+1,k)*pfacey(2:i1,3:j1+1,k) -    &
-          v0(2:i1,2:j1,k)*pfacey(2:i1,2:j1,k) )*dyi    &
-          +(1./rhobf(k))*(w0(2:i1,2:j1,k+1)*pfacez(2:i1,2:j1,k+1) -    &
-          w0(2:i1,2:j1,k)*pfacez(2:i1,2:j1,k) )/dzf(k) &
-          )
-  end do
+!  do k=1,kmax
+!     pout(2:i1,2:j1,k) = pout(2:i1,2:j1,k) - ( &
+!          (u0(3:i1+1,2:j1,k)*pfacex(3:i1+1,2:j1,k) -    &
+!          u0(2:i1,2:j1,k)*pfacex(2:i1,2:j1,k) )*dxi    &
+!          +(v0(2:i1,3:j1+1,k)*pfacey(2:i1,3:j1+1,k) -    &
+!          v0(2:i1,2:j1,k)*pfacey(2:i1,2:j1,k) )*dyi    &
+!          +(1./rhobf(k))*(w0(2:i1,2:j1,k+1)*pfacez(2:i1,2:j1,k+1) -    &
+!          w0(2:i1,2:j1,k)*pfacez(2:i1,2:j1,k) )/dzf(k) &
+!          )
+! end do
   
 end subroutine advecc_hybrid_f
 
