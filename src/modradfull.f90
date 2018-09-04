@@ -47,6 +47,8 @@ module modradfull
   ! 0.5*p1d(i)*p1d(j), 0.5*p2d(i)*p2d(j), and 0.5*p3d(i)*p3d(j) resp.
   !
 
+  integer :: alog_counter = 0
+  
   integer :: nv,nv1,mb
   real :: totalpower
   real,parameter :: SolarConstant      = 1.365d+3  !< The Solar radiation constant
@@ -108,6 +110,8 @@ module modradfull
   real, allocatable ::  rhof_b(:),exnf_b(:)
   real, allocatable ::  temp_b(:,:,:),qv_b(:,:,:),ql_b(:,:,:),rr_b(:,:,:)
   real, allocatable ::  tempskin(:,:)
+  real, allocatable :: bf_log(:)          ! used to save intermediate results between qft calls
+  
 contains
     subroutine radfull
   !   use radiation,    only : d4stream
@@ -189,7 +193,7 @@ contains
     deallocate(rhof_b,exnf_b)
     deallocate(temp_b,qv_b,ql_b,rr_b)
     deallocate(tempskin)
-
+    
     end subroutine radfull
 
     subroutine d4stream(i1,ih,j1,jh,k1, tskin, albedo, CCN, dn0, &
@@ -377,7 +381,8 @@ contains
     !
     allocate (pp(nv1),fds(nv1),fus(nv1),fdir(nv1),fuir(nv1))
     allocate (pt(nv),ph(nv),po(nv),pre(nv),pde(nv),plwc(nv),prwc(nv))
-
+    allocate (bf_log(nv1))
+    
     if (blend) then
        pp(1:norig) = sp(1:norig)
        pt(1:norig) = st(1:norig)
@@ -558,10 +563,10 @@ contains
 
   !> In the limits of no scattering ( Fu, 1991 ), fk1 = 1.0 / u(3) and
   !> fk2 = 1.0 / u(4).
-  subroutine coefft0( solar,t0,t1,u0,f0,aa,zz,a1,z1,fk1,fk2)
+  subroutine coefft0( solar,t0,t1,u0i,f0,aa,zz,a1,z1,fk1,fk2)
 
     logical, intent (in) :: solar
-    real, intent(in)     :: t0, t1, u0, f0
+    real, intent(in)     :: t0, t1, u0i, f0
     real, intent (out)   :: aa(4,4,2), zz(4,2), a1(4,4), z1(4), fk1, fk2
 
     integer :: i, j, k, jj
@@ -569,7 +574,8 @@ contains
 
     fk1 = 4.7320545
     fk2 = 1.2679491
-    y = exp ( - ( t1 - t0 ) / (u0+epsilon(u0)))
+    !y = exp ( - ( t1 - t0 ) / (u0+epsilon(u0)))   
+    y = exp ( - ( t1 - t0 ) * u0i)
     fw = 0.5 * f0
     do i = 1, 4
        if ( solar ) then
@@ -578,7 +584,7 @@ contains
           zz(i,2) = 0.0
        else
           jj = 5 - i
-          z1(i) = fw / ( 1.0 + u(jj) / (u0+epsilon(u0)) )
+          z1(i) = fw / ( 1.0 + u(jj) * u0i)
           zz(i,1) = z1(i)
           zz(i,2) = z1(i) * y
        endif
@@ -614,11 +620,11 @@ contains
   !> is applied to nonhomogeneous atmospheres. See comments in subroutine
   !> 'qcfel' for array AB(13,4*n).
   !> **********************************************************************
-  subroutine qccfe (solar,asbs,ee,t,w,w1,w2,w3,u0,f0,fk1,fk2,a4,g4,z4 )
+  subroutine qccfe (solar,asbs,ee,t,w,w1,w2,w3,u0,u0i,f0,fk1,fk2,a4,g4,z4 )
 
     logical, intent (in)              :: solar
     real, intent (in)                 :: asbs, ee
-    real, dimension (nv), intent (in) :: t, w, w1, w2, w3, u0, f0
+    real, dimension (nv), intent (in) :: t, w, w1, w2, w3, u0, u0i, f0
     real, dimension (nv), intent (out):: fk1, fk2
     real, intent(out)                 :: a4(4,4,nv), g4(4,nv), z4(4,nv)
 
@@ -636,7 +642,7 @@ contains
 
     wn = w(1)
     if ( wn <= 1.0e-4 ) then
-       call coefft0(solar,0.0,t(1),u0(1),f0(1),aa,zz,a1,z1,fk1(1),fk2(1))
+       call coefft0(solar,0.0,t(1),u0i(1),f0(1),aa,zz,a1,z1,fk1(1),fk2(1))
     else
        if ( wn >= 0.999999 ) wn = 0.999999
        call coefft(solar,wn,w1(1),w2(1),w3(1),0.0,t(1),u0(1),f0(1), &
@@ -664,7 +670,7 @@ contains
     do k = 2, nv
        wn = w(k)
        if ( w(k) .le. 1.0e-4 ) then
-          call coefft0(solar,t(k-1),t(k),u0(k),f0(k),aa,zz,a1,z1,fk1(k),fk2(k))
+          call coefft0(solar,t(k-1),t(k),u0i(k),f0(k),aa,zz,a1,z1,fk1(k),fk2(k))
        else
           if ( wn .ge. 0.999999 ) wn = 0.999999
           call coefft(solar,wn,w1(k),w2(k),w3(k),t(k-1),t(k),u0(k),f0(k),  &
@@ -707,7 +713,7 @@ contains
     if ( solar ) then
        v1 = 0.2113247 * asbs
        v2 = 0.7886753 * asbs
-       v3 = asbs * u0(1) * f0(1) * exp ( - t(nv) / (u0(1)+epsilon(u0(1)) ))
+       v3 = asbs * u0(1) * f0(1) * exp ( - t(nv) *u0i(1) )
     else
        v1 = 0.2113247 * ( 1.0 - ee )
        v2 = 0.7886753 * ( 1.0 - ee )
@@ -943,7 +949,7 @@ contains
   !> --------------------------------------------------------------------------
   !> Subroutine qft: Delta 4-stream solver for fluxes
   !>
-  subroutine qft (solar, ee, as, u0, bf, tt, ww, ww1, ww2, ww3, ww4, ffu, ffd)
+  subroutine qft (solar, ee, as, u0, bf, tt, ww, ww1, ww2, ww3, ww4, ffu, ffd, update_logs)
     use modglobal, only : pi
     logical, intent (in) :: solar
     logical              :: ldummy ! serves to make radiation scheme work under O4
@@ -952,20 +958,35 @@ contains
     real, dimension (nv1), intent (in)  :: bf
     real, dimension (nv1), intent (out) :: ffu, ffd
 
-    real, dimension (nv) :: t,w,w1,w2,w3,u0a,f0a,fk1,fk2
+    real, dimension (nv) :: t,w,w1,w2,w3,u0a,f0a,fk1,fk2,u0i
+
+
+    logical, intent(in), optional ::  update_logs
+    logical :: l_update
+    
     integer :: k, kk, ii, jj
     real    :: x(4), fi(4), a4(4,4,nv), z4(4,nv), g4(4,nv)
     real    :: tkm1, fw3, fw4, y1, xy, xas, xee
     real, parameter :: fw1 = 0.6638960, fw2 = 2.4776962
 
+
+    l_update = .true.
+    if (present(update_logs)) then
+       l_update = update_logs
+    end if
+    
     call adjust(tt,ww,ww1,ww2,ww3,ww4,t,w,w1,w2,w3)
 
+
+    
+!    write (*,*) "qft() nv=", nv
     if (solar) then
        fw3 = u0
        xee = 0.0
        xas = as
        do k = 1, nv
           u0a(k) = u0
+          u0i(k) = 1/(u0+epsilon(u0))
           f0a(k) = 1./pi
        end do
     else
@@ -973,19 +994,32 @@ contains
        xas = bf(nv1) * ee
        xee = ee
        tkm1 = 0.0
-        do k = 1, nv
+       !       write (*,*) "qft() doing alog()"
+       ! write (*,*) bf(1:10)
+
+       if (l_update) then
+          do k = 1, nv
+             bf_log(k) = 1 / ( alog( bf(k+1)/bf(k) ) + epsilon(1.))
+          end do
+       end if
+       
+       do k = 1, nv
            f0a(k) = 2.0 * ( 1.0 - w(k) ) * bf(k)
-           u0a(k) = -(t(k)-tkm1) / ( alog( bf(k+1)/bf(k) ) + epsilon(1.))
+           u0a(k) = -(t(k)-tkm1) * bf_log(k)
+           u0i(k) = 1.0 / (u0a(k) + epsilon(u0a(1)))
+           
            tkm1 = t(k)
             if(abs(u0a(k))<10.e-10) then
               ldummy=.true.
             else
               ldummy=.false.
             endif
-        end do
+         end do
+         alog_counter = alog_counter + 1
      end if
 
-    call qccfe (solar,xas,xee,t,w,w1,w2,w3,u0a,f0a,fk1,fk2,a4,g4,z4 )
+     
+    call qccfe (solar,xas,xee,t,w,w1,w2,w3,u0a,u0i,f0a,fk1,fk2,a4,g4,z4 )
 
     tkm1 = 0.
     do k = 1, nv1
@@ -1004,7 +1038,8 @@ contains
           x(3) = 1.0
           x(4) = 1.0
           if (solar) y1 = t(kk)
-          xy =  exp ( - y1 / (u0a(kk)+epsilon(u0a(1)) ))
+          !xy =  exp ( - y1 / (u0a(kk)+epsilon(u0a(1)) ))
+          xy =  exp ( - y1 * u0i(kk) )
        endif
        if (kk > 1) tkm1 = t(kk)
 
@@ -1124,6 +1159,7 @@ contains
     real :: fuq2, xir_norm
     real, dimension(:), allocatable, save :: bandWeights
     real :: randomNumber
+    logical :: update_logs
     ! ----------------------------------------
 
     ib=0;ig1=0;ig2=0
@@ -1172,14 +1208,18 @@ contains
         call cloud_water(ib + size(solar_bands), pre, plwc, dz, tw, ww, www)
         call combineOpticalProperties(TauNoGas, wNoGas, pfNoGas, tw, ww, www)
       end if
-
+!      write (*,*) 'planck', ib, pts,  llimit(ir_bands(ib)), rlimit(ir_bands(ib)), pt(nv-4:nv)
       call planck(pt, pts, llimit(ir_bands(ib)), rlimit(ir_bands(ib)), bf)
-
+      ! This updates bf
+      ! pts    Surface skin temperature
+      ! pt     temperature (grid point?)
+      
+      update_logs = .true.
       gPointLoop: do ig = ig1, ig2
          tau = TauNoGas; w = wNoGas; pf = pfNoGas
          call gases (ir_bands(ib), ig, pp, pt, ph, po, tg )
-         call combineOpticalProperties(tau, w, pf, tg)
-
+         call combineOpticalProperties(tau, w, pf, tg)     ! updates tau
+ 
          !
          ! Solver expects cumulative optical depth
          !
@@ -1188,8 +1228,9 @@ contains
            tau(k) = max(0.0,tau(k)) + tau(k - 1)
          end do
          call qft (.False., ee, 0., 0., bf, tau, w, pf(:, 1), pf(:, 2),      &
-              pf(:, 3), pf(:, 4), fu1, fd1)
-
+              pf(:, 3), pf(:, 4), fu1, fd1, update_logs)
+         update_logs = .false.
+         
          if (McICA) then
             xir_norm = 1./bandweights(ib)
          else
@@ -1199,13 +1240,17 @@ contains
          fdir(:) = fdir(:) + fd1(:) * xir_norm
          fuir(:) = fuir(:) + fu1(:) * xir_norm
       end do gPointLoop
-    end do bandLoop
+   end do bandLoop
+!   write (*,*)
     !
     ! fuq2 is the surface emitted flux in the band 0 - 280 cm**-1 with a
     ! hk of 0.03.
     !
     fuq2 = bf(nv1) * 0.03 * pi * ee
     fuir(:) = fuir(:) + fuq2
+
+!    write (*,*) "end-of-radir alog_counter:", alog_counter
+    
   end subroutine rad_ir
   !> Subroutine rad_vis: Computes radiative fluxes using a band structure
   !> defined by input ckd file
@@ -1342,7 +1387,8 @@ contains
       fuq1 = ss / totalpower
       fds(:)  = fds(:)*fuq1
       fus(:)  = fus(:)*fuq1
-    end if
+   end if
+!   write (*,*) "end-of-rad_vis alog_counter:", alog_counter
   end subroutine rad_vis
   !> Subroutine select_bandg
   !>
