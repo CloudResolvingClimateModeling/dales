@@ -30,7 +30,7 @@ module advec_hybrid_f
 implicit none
 contains
 
-subroutine advecc_hybrid_f(pin, pout)
+subroutine advecc_hybrid_f(pin, pout, phi_tilde_in)
   use modglobal, only : ih,i1,jh,j1,kmax,k1,dxi,dyi,dzf,lambda_crit
   use modfields, only : u0,v0,w0,rhobf
 
@@ -38,8 +38,9 @@ subroutine advecc_hybrid_f(pin, pout)
   
   real,dimension(2-ih:i1+ih,2-jh:j1+jh,k1),intent(in)   :: pin  !< Input: the cell centered field (qt,thetal,sv etc)
   real,dimension(2-ih:i1+ih,2-jh:j1+jh,k1),intent(inout):: pout !< Output: the tendency for the input field (qtp,thetalp,svp etc)
+  real,optional,intent(in) :: phi_tilde_in   !< Order of magnitude of the field, used in the smoothness criterion. Optional. 
+
   real :: phi_tilde
-  
   logical :: lsmx,lsmy,lsmz                   ! smoothness flags
   real :: pfacex,pfacey,pfacez  ! face values, defined at the same interfaces as u0,v0 and w0 respectively
   real,dimension(3)    :: gam                 ! used for smoothness test
@@ -58,21 +59,24 @@ subroutine advecc_hybrid_f(pin, pout)
   real                 :: wgtfac              ! Normalization factor for the weights
 
 
-
-  
-
-  ! TODO I'd like to pass phi_tilde as a parameter
-  ! leaving like this for now, to be as close to the original as possible
-  ! e12 may be on either side of 1 ?
-  if (any(pin>=1.e5)) then ! probably number density
-     phi_tilde = 1.e3
-  elseif (any(pin>=1.)) then ! probably (potential) temperature
-     phi_tilde = 1.
-  else ! probably qt
-     phi_tilde = 1.e-3
+  ! phi_tilde is some kind of order-of-magnitude, used to calculate eps_hybrid
+  ! it's unclear to me if it's necessary for this scheme or just used to avoid dividing by 0
+  ! but for now it's here, to give the same results as the original routine
+  ! If phi_tilde is passed as a function argument, use it, otherwise determine heuristically as in the original
+  ! e12 may be on either side of 1,
+  ! other fields like T, qt should always end up with the same phi_tilde.
+  if(.not. present(phi_tilde_in)) then
+     if (any(pin>=1.e5)) then   ! probably number density
+        phi_tilde = 1.e3
+     elseif (any(pin>=1.)) then ! probably (potential) temperature
+        phi_tilde = 1.
+     else                         ! probably qt
+        phi_tilde = 1.e-3
+     end if
+  else
+     phi_tilde = phi_tilde_in
   end if
   eps_hybrid = 1.e-8*phi_tilde**2
-
    
   do k=1,k1
      do j=2,j1+1
@@ -220,7 +224,7 @@ subroutine advecc_hybrid_f(pin, pout)
                     beta(1) = c1*(vin(0) -2*vin(1) +vin(2))**2 + c2*(3*vin(0)-4*vin(1)+vin(2))**2
                     beta(2) = c1*(vin(-1)-2*vin(0) +vin(1))**2 + c2*(vin(-1)-vin(1))**2
                     beta(3) = c1*(vin(-2)-2*vin(-1)+vin(0))**2 + c2*(vin(-2)-4*vin(-1)+3*vin(0))**2
-                    
+                     
                     !interpolated values of the variable at the cell faces using each of the stencils
                     varFace(1) = (11*vin(0) -7*vin(1) + 2*vin(2))/6
                     varFace(2) = ( 2*vin(-1)+5*vin(0) -   vin(1))/6

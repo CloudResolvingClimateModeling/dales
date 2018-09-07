@@ -129,7 +129,7 @@ subroutine advection
       call advecc_hybrid(thl0,thlp)
     case(iadv_hybrid_f)
       if (.not. leq) stop "advec_hybrid_f does not support a non-uniform vertical grid."
-      call advecc_hybrid_f(thl0,thlp)
+      call advecc_hybrid_f(thl0,thlp,1.0)
     case(iadv_null)
       ! null advection scheme 
       stop "Null advection scheme selected for iadv_thl - probably a bad idea." 
@@ -161,7 +161,7 @@ subroutine advection
         call advecc_hybrid(qt0,qtp)
       case(iadv_hybrid_f)
         if (.not. leq) stop "advec_hybrid_f does not support a non-uniform vertical grid."
-        call advecc_hybrid_f(qt0,qtp)
+        call advecc_hybrid_f(qt0,qtp,1e-3)
       case(iadv_null)
          ! null advection scheme 
          stop "Null advection scheme selected for iadv_qt - probably a bad idea."
