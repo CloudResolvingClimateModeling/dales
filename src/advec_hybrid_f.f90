@@ -204,19 +204,21 @@ subroutine advecc_hybrid_f(pin, pout, phi_tilde_in)
                  pfacez =  ( rhobf(k)*pin(i,j,k) + rhobf(k-1)*pin(i,j,k-1) ) * .5
               end if
            else
-
-              ! determine smoothness lsmz
-              if (w0(i,j,k).ge.0.) then
-                 gam(:) = (pin(i,j,k-1:k+1)-pin(i,j,k-2:k))**2 + &
-                      (pin(i,j,k-2:k)-pin(i,j,k-3:k-1))**2
-              else
-                 gam(:) = (pin(i,j,k:k+2)-pin(i,j,k-1:k+1))**2 + &
-                      (pin(i,j,k-1:k+1)-pin(i,j,k-2:k))**2
+              
+              lsmz = .true.
+              if (k < kmax-1) then   ! the original scheme considers k=kmax-1 fully smooth
+                 ! determine smoothness lsmz
+                 if (w0(i,j,k).ge.0.) then
+                    gam(:) = (pin(i,j,k-1:k+1)-pin(i,j,k-2:k))**2 + &
+                         (pin(i,j,k-2:k)-pin(i,j,k-3:k-1))**2
+                 else
+                    gam(:) = (pin(i,j,k:k+2)-pin(i,j,k-1:k+1))**2 + &
+                         (pin(i,j,k-1:k+1)-pin(i,j,k-2:k))**2
+                 end if
+                 ! lsmz = maxval(gam)/(minval(gam)+eps_hybrid) < lambda_crit
+                 lsmz = maxval(gam) < lambda_crit * (minval(gam)+eps_hybrid)
               end if
-              ! lsmz = maxval(gam)/(minval(gam)+eps_hybrid) < lambda_crit
-              lsmz = maxval(gam) < lambda_crit * (minval(gam)+eps_hybrid)
-
-           
+              
               vin(-3:2) = pin(i,j,k-3:k+2) * rhobf(k-3:k+2)
               if (lsmz) then ! field around this location is smooth -> use regular 5th order (upwind)
                  sgn = sign(1.0,w0(i,j,k))  ! set sgn, to account for different wind directions
@@ -284,6 +286,7 @@ subroutine advecc_hybrid_f(pin, pout, phi_tilde_in)
 ! end do
   
 end subroutine advecc_hybrid_f
+
 
 end module advec_hybrid_f
 
