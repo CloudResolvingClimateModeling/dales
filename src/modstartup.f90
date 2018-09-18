@@ -242,7 +242,8 @@ contains
     call MPI_BCAST(iadv_sv(1:nsv) ,nsv,MPI_INTEGER,0,commwrld,mpierr)
 
     call MPI_BCAST(lnoclouds  ,1,MPI_LOGICAL,0,commwrld,mpierr)
-
+    call MPI_BCAST(a_acc      ,1,MY_REAL    ,0,commwrld,mpierr)
+    
     ! If the namelist argument outfile is provided, open it with
     ! the handle ifmessages, set to 10.
     ! Standard output messages are redirected there.
