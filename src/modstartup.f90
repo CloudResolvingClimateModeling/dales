@@ -119,7 +119,7 @@ contains
         write(*,*)  'iostat error: ', ierr
         stop 'ERROR: Problem in namoptions RUN'
       endif
-      !write(ifmessages,RUN)
+      write(ifmessages,RUN)
       rewind(ifnamopt)
       read (ifnamopt,DOMAIN,iostat=ierr)
       if (ierr > 0) then
@@ -127,7 +127,7 @@ contains
         write(*,*)  'iostat error: ', ierr
         stop 'ERROR: Problem in namoptions DOMAIN'
       endif
-      !write(ifmessages,DOMAIN) 
+      write(ifmessages,DOMAIN) 
       rewind(ifnamopt)
       read (ifnamopt,PHYSICS,iostat=ierr)
       if (ierr > 0) then
@@ -135,7 +135,7 @@ contains
         write(*,*)  'iostat error: ', ierr
         stop 'ERROR: Problem in namoptions PHYSICS'
       endif
-      !write(ifmessages,PHYSICS)
+      write(ifmessages,PHYSICS)
       rewind(ifnamopt)
       read (ifnamopt,DYNAMICS,iostat=ierr)
       if (ierr > 0) then
@@ -143,7 +143,7 @@ contains
         write(*,*)  'iostat error: ', ierr
         stop 'ERROR: Problem in namoptions DYNAMICS'
       endif
-      !write(ifmessages,DYNAMICS)
+      write(ifmessages,DYNAMICS)
       close(ifnamopt)
     end if
 
