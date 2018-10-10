@@ -172,7 +172,7 @@ save
       real :: rtimee             !<     * elapsed time since the "cold" start
       integer(kind=longint) :: btime             !<     * time of (re)start
       integer :: ntimee         !<     * number of timesteps since the cold start
-      integer :: ntrun          !<     * number of timesteps since the start of the run
+      integer(kind=longint) :: ntrun          !<     * number of timesteps since the start of the run
       integer(kind=longint) :: timeleft
 
       logical :: ladaptive   = .false.    !<    * adaptive timestepping on or off
