@@ -1024,6 +1024,8 @@ contains
     use modsurface,        only : exitsurface
     use modthermodynamics, only : exitthermodynamics
 
+    use modglobal, only : ntrun,itot,jtot,kmax
+    use modmpi,    only : myid, nprocs, nprocx, nprocy, CPU_program
     implicit none
 
     call exittimedep
@@ -1035,9 +1037,16 @@ contains
     call exitmicrophysics
     call exitboundary
     call exitfields
-    call exitglobal
+    call exitglobal    
     call exitmpi
 
+    if(myid==0)then
+      write(6,*)'TOTAL number of grid points Nx, Ny, Nz ',itot,jtot,kmax
+      write(6,*)'TOTAL number of procs ',nprocs, ' = ', nprocx, 'x', nprocy
+      write(6,*)'TOTAL number of time steps ntrun ',ntrun
+      write(6,*)'time per grid point per time step',CPU_program*nprocs/(itot*jtot*kmax*ntrun)
+    end if
+    
  end subroutine exitmodules
 !----------------------------------------------------------------
   subroutine randomnize(field,klev,ampl,ir,ihl,jhl)
