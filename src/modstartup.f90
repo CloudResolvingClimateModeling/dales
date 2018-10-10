@@ -855,7 +855,45 @@ contains
 
   end subroutine readrestartfiles
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  ! this function is called from time stepping,
+  ! determines when to write a restart file, then calls do_writerestartfiles to do the work
+  !  if trestart = 0, no periodic restart files will be written.
   subroutine writerestartfiles
+    use modglobal, only : i1,i2,ih,j1,j2,jh,k1,dsv,itrestart,tnextrestart,dt_lim,rtimee,timee,tres,cexpnr,&
+         rtimee,rk3step,ifoutput,nsv,timeleft,dtheta,dqt,dt
+    use modmpi,    only : cmyid,myid
+    
+    logical :: lexitnow = .false.
+    character(50) name
+    
+    if (timee == 0) return
+    if (rk3step /=3) return
+    name = 'exit_now.'//cexpnr
+    inquire(file=trim(name), EXIST=lexitnow)
+
+    if (timee<tnextrestart) dt_lim = min(dt_lim,tnextrestart-timee)
+
+    if ((timee>=tnextrestart .and. itrestart > 0) .or. lexitnow) then
+       tnextrestart = tnextrestart+itrestart
+       call do_writerestartfiles
+    end if
+
+    if (lexitnow) then
+       timeleft = 0  !jump out of the time loop
+    end if
+    if (lexitnow .and. myid == 0 ) then
+       open(1, file=trim(name), status='old')
+       close(1,status='delete')
+       write(ifmessages,*) 'Stopped at t=',rtimee
+    end if
+
+  end subroutine writerestartfiles
+
+  ! this function writes a restart file
+  ! separated from writerestartfiles to be callable from the library interface
+  subroutine do_writerestartfiles
+      
     use modsurfdata,only: ustar,thlflux,qtflux,svflux,dthldz,dqtdz,ps,thls,qts,thvs,oblav,&
                           tsoil,phiw,tskin,Wl,ksoilmax,isurf,ksoilmax,Qnet,swdavn,swuavn,lwdavn,lwuavn,nradtime,&
                           obl,xpatches,ypatches,ps_patch,thls_patch,qts_patch,thvs_patch,oblpatch,lhetero,qskin
@@ -867,19 +905,10 @@ contains
     use modsubgriddata, only : ekm
 
     implicit none
-    logical :: lexitnow = .false.
     integer imin,ihour
     integer i,j,k,n
     character(50) name,linkname
 
-    if (timee == 0) return
-    if (rk3step /=3) return
-    name = 'exit_now.'//cexpnr
-    inquire(file=trim(name), EXIST=lexitnow)
-
-    if (timee<tnextrestart) dt_lim = min(dt_lim,tnextrestart-timee)
-    if (timee>=tnextrestart .or. lexitnow) then
-      tnextrestart = tnextrestart+itrestart
       ihour = floor(rtimee/3600)
       imin  = floor((rtimee-ihour * 3600) /3600. * 60.)
       name = 'initd  h  m        .'
@@ -971,24 +1000,16 @@ contains
         linkname = name
         linkname(6:11) = "latest"
         call system("ln -sf "//name //" "//linkname)
-      end if
-      if (lexitnow) then
-        timeleft = 0  !jump out of the time loop
-      end if
-      if (lexitnow .and. myid == 0 ) then
-        open(1, file=trim(name), status='old')
-        close(1,status='delete')
-        write(ifmessages,*) 'Stopped at t=',rtimee
-      end if
-
+     end if
+     
       if (myid==0) then
         write(ifmessages,'(A,F15.7,A,I4)') 'dump at time = ',rtimee,' unit = ',ifoutput
       end if
 
-    end if
-
-
-  end subroutine writerestartfiles
+    end subroutine do_writerestartfiles
+    
+  
+  
 
   subroutine exitmodules
     use modfields,         only : exitfields

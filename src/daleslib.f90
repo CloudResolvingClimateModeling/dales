@@ -37,7 +37,7 @@ module daleslib
     integer, parameter :: QT_FORCING_GLOBAL=0
     integer, parameter :: QT_FORCING_LOCAL=1
     integer, parameter :: QT_FORCING_VARIANCE=2
-    
+   
     integer :: my_task, master_task
 
     real, allocatable :: u_tend(:)
@@ -48,6 +48,16 @@ module daleslib
     real, allocatable :: ql_ref(:)   ! QL profile from global model - not a tendency
     real, allocatable :: qt_alpha(:)
 
+    real, allocatable :: u_nudge(:)
+    real, allocatable :: v_nudge(:)
+    real, allocatable :: thl_nudge(:)
+    real, allocatable :: qt_nudge(:)
+    real :: u_nudge_time = 0
+    real :: v_nudge_time = 0
+    real :: thl_nudge_time = 0
+    real :: qt_nudge_time = 0
+
+    
     real :: ps_tend
 
     integer :: qt_forcing_type = QT_FORCING_GLOBAL
@@ -117,18 +127,20 @@ module daleslib
             ! Initial time overrides
 
             if (present(date)) then
-                yy = date/10000
-                mo = mod(date,10000)/100
-                dd = mod(date,100)
-                hh = 0
-                mm = 0
-                ss = 0
-                if (present(time)) then
-                    hh = time/10000
-                    mm = mod(time,10000)/100
-                    ss = mod(time,100)
-                endif
-                call set_start_time(yy,mo,dd,hh,mm,ss)
+               if (date /= 0) then
+                  yy = date/10000
+                  mo = mod(date,10000)/100
+                  dd = mod(date,100)
+                  hh = 0
+                  mm = 0
+                  ss = 0
+                  if (present(time)) then
+                     hh = time/10000
+                     mm = mod(time,10000)/100
+                     ss = mod(time,100)
+                  endif
+                  call set_start_time(yy,mo,dd,hh,mm,ss)
+               endif
             endif
 
             !---------------------------------------------------------
@@ -195,7 +207,17 @@ module daleslib
           ! lforce_user = .true.
           ps_tend = 0
           qt_alpha = 0
-         
+
+          allocate(u_nudge(1:kmax))
+          allocate(v_nudge(1:kmax))
+          allocate(thl_nudge(1:kmax))
+          allocate(qt_nudge(1:kmax))
+
+          u_nudge = 0
+          v_nudge = 0
+          thl_nudge = 0
+          qt_nudge = 0
+
 
         end subroutine initdaleslib
 
@@ -210,28 +232,28 @@ module daleslib
           deallocate(ql_tend)
           deallocate(ql_ref)
           deallocate(qt_alpha)
-          
+          deallocate(u_nudge)
+          deallocate(v_nudge)
+          deallocate(thl_nudge)
+          deallocate(qt_nudge)
         end subroutine exitdaleslib
 
 
-        ! tendency nudging function
-        ! the ql calculation needs MPI communication
-        ! moving this to python for now.
-!        
-!        subroutine calculate_tendency_nudge
-!          use modglobal,   only : i1,j1,imax,jmax,kmax
-!          use modfields,   only : thlp,qtp,qt0,qt0av,ql0av,qsat
-!          implicit none
-!          integer k
-!          real ql, beta
-!
-!          do k=1,kmax
-!             beta = 1
-!             ql = sum( max (beta * (qt0(2:i1, 2:j1, k) - qt0av) + qt0av - qsat(2:i1, 2:j1, k), 0))
-!             write(ifmessages,*) beta, ql/(imax*jmax), ql0av
-!          end do          
-!        end subroutine calculate_tendency_nudge
-        
+        subroutine daleslib_nudge
+           use modfields,   only : up,vp,thlp,qtp, u0,v0,thl0,qt0, u0av,v0av,thl0av,qt0av
+           use modglobal,   only : i1,j1,kmax
+           integer k
+           do k=1,kmax
+              if (u_nudge_time /= 0)     up(2:i1,2:j1,k) =   up(2:i1,2:j1,k) + (u_nudge(k) - u0av(k))     / u_nudge_time
+              if (v_nudge_time /= 0)     vp(2:i1,2:j1,k) =   vp(2:i1,2:j1,k) + (v_nudge(k) - v0av(k))     / v_nudge_time
+              if (thl_nudge_time /= 0) thlp(2:i1,2:j1,k) = thlp(2:i1,2:j1,k) + (thl_nudge(k) - thl0av(k)) / thl_nudge_time
+              if (qt_nudge_time /= 0)   qtp(2:i1,2:j1,k) =  qtp(2:i1,2:j1,k) + (qt_nudge(k) - qt0av(k))   / qt_nudge_time
+           end do
+           !write(ifmessages,*) 'nudge(): qt_nudge_time=', qt_nudge_time
+           !if (qt_nudge_time /= 0) write(ifmessages,*) (qt_nudge - qt0av)   / qt_nudge_time
+           
+         end subroutine daleslib_nudge
+          
         
         subroutine force_tendencies
           use modmpi,      only : mpierr
@@ -464,6 +486,7 @@ module daleslib
             call samptend(tend_coriolis)
             call forces !remaining terms of ns equation
             call force_tendencies         ! NOTE - not standard DALES, these are our own tendencies
+            call daleslib_nudge           ! NOTE - not standard DALES, omuse-interface for nudging towards given profiles
             call samptend(tend_force)
 
             call lstend !large scale forcings
