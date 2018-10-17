@@ -123,7 +123,7 @@ contains
     use modglobal, only : imax,i1,ih,jmax,j1,jh,k1,rk3step,&
                           timee,dt_lim,cexpnr,ifoutput,rtimee
     use modmpi,    only : myid,cmyidx, cmyidy
-    use modstat_nc, only : lnetcdf, writestat_nc
+    use modstat_nc, only : lnetcdf, writestat_nc, synchronize_nc
     use modmicrodata, only : iqr, imicro, imicro_none
     implicit none
 
@@ -279,6 +279,7 @@ contains
     if(lnetcdf) then
       call writestat_nc(ncid,1,tncname,(/rtimee/),nrec,.true.)
       call writestat_nc(ncid,nvar,ncname,vars,nrec,imax,jmax,khigh-klow+1)
+      if (mod(nrec, 10) == 0) call synchronize_nc(ncid)
     end if
 
     if(lbinary) then

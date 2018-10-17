@@ -92,8 +92,8 @@ contains
     if (.not.exans) then
 
       call date_and_time(date,time)
-      iret = nf90_create(fname,NF90_SHARE,ncid)
-      !iret = nf90_create(fname,ior(NF90_SHARE,NF90_HDF5)  ,ncid)  ! force netcdf4 to make compression work
+      !iret = nf90_create(fname,NF90_SHARE,ncid)
+      iret = nf90_create(fname,ior(NF90_SHARE,NF90_HDF5)  ,ncid)  ! force netcdf4 to make compression work
       ! note - files cannot be read until Dales is done
       
       iret = nf90_put_att(ncid,NF90_GLOBAL,'title',fname)
@@ -490,7 +490,16 @@ contains
 
   end subroutine writestat_3D_short_nc
 
+  subroutine synchronize_nc(ncid)
+    implicit none
+    integer ncid
+    integer status
+    status = NF90_SYNC(ncid)
+    if (status /= nf90_noerr) write(*,*) "Failed to synchronize netcdf"
+  end subroutine synchronize_nc
 
+
+  
   subroutine ncinfo(out,in1,in2,in3,in4)
 
     implicit none

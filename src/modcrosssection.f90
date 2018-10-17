@@ -267,7 +267,7 @@ contains
   use modglobal, only : imax,i1,kmax,nsv,rlv,cp,rv,rd,cu,cv,cexpnr,ifoutput,rtimee
   use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,e120,exnf,thvf,cloudnr
   use modmpi,    only : myid, myidx,myidy
-  use modstat_nc, only : lnetcdf, writestat_nc
+  use modstat_nc, only : lnetcdf, writestat_nc, synchronize_nc
   implicit none
 
   integer i,k,n
@@ -352,6 +352,8 @@ contains
       vars(:,:,12) = e120(2:i1,crossplane,1:kmax)
       call writestat_nc(ncid1,1,tncname1,(/rtimee/),nrec1,.true.)
       call writestat_nc(ncid1,nvar,ncname1(1:nvar,:),vars,nrec1,imax,kmax)
+      if (mod(nrec1, 10) == 0) call synchronize_nc(ncid1)
+      
       deallocate(vars)
     end if
     deallocate(thv0,buoy)
@@ -363,7 +365,7 @@ contains
     use modglobal, only : imax,jmax,i1,j1,nsv,rlv,cp,rv,rd,cu,cv,cexpnr,ifoutput,rtimee
     use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,e120,exnf,thvf,cloudnr
     use modmpi,    only : cmyid
-    use modstat_nc, only : lnetcdf, writestat_nc
+    use modstat_nc, only : lnetcdf, writestat_nc, synchronize_nc
     use modmicrodata, only : iqr,inr
     implicit none
 
@@ -457,6 +459,7 @@ contains
       vars(:,:,12) = e120(2:i1,2:j1,crossheight(cross))
       call writestat_nc(ncid2(cross),1,tncname2,(/rtimee/),nrec2(cross),.true.)
       call writestat_nc(ncid2(cross),nvar,ncname2(1:nvar,:),vars,nrec2(cross),imax,jmax)
+      if (mod(nrec2(cross), 10) == 0) call synchronize_nc(ncid2(cross))
       deallocate(vars)
       end do
     end if
@@ -470,7 +473,7 @@ contains
     use modglobal, only : jmax,kmax,j1,nsv,rlv,cp,rv,rd,cu,cv,cexpnr,ifoutput,rtimee
     use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,e120,exnf,thvf,cloudnr
     use modmpi,    only : cmyid, myidx, myidy
-    use modstat_nc, only : lnetcdf, writestat_nc
+    use modstat_nc, only : lnetcdf, writestat_nc, synchronize_nc
     implicit none
 
 
@@ -560,6 +563,7 @@ contains
       vars(:,:,12) = e120(crossortho,2:j1,1:kmax)
       call writestat_nc(ncid3,1,tncname3,(/rtimee/),nrec3,.true.)
       call writestat_nc(ncid3,nvar,ncname3(1:nvar,:),vars,nrec3,jmax,kmax)
+      if (mod(nrec3, 10) == 0) call synchronize_nc(ncid3)
       deallocate(vars)
     end if
 
@@ -573,13 +577,15 @@ contains
     use modglobal, only : imax,jmax,kmax,i1,j1,nsv,rlv,cp,rv,rd,cu,cv,cexpnr,ifoutput,rtimee,dzf,nsv
     use modfields, only : um,vm,wm,thlm,qtm,svm,thl0,qt0,ql0,exnf,thvf,cloudnr,rhobf,sv0,surf_rain
     use modmpi,    only : cmyid
-    use modstat_nc, only : lnetcdf, writestat_nc
+    use modstat_nc, only : lnetcdf, writestat_nc, synchronize_nc
     use modmicrodata, only : iqr
+    use netcdf
     implicit none
 
 
     ! LOCAL
     integer i,j,k,n
+    integer status
     character(20) :: name
     
     real, allocatable :: vars(:,:,:)
@@ -603,6 +609,8 @@ contains
 
       call writestat_nc(ncid4,1,tncname4,(/rtimee/),nrec4,.true.)
       call writestat_nc(ncid4,nvar4,ncname4(1:nvar4,:),vars,nrec4,imax,jmax)
+      if (mod(nrec4, 10) == 0) call synchronize_nc(ncid4)
+      
       deallocate(vars)
     end if
 
