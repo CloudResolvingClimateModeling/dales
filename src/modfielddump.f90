@@ -35,7 +35,7 @@ PUBLIC :: initfielddump, fielddump,exitfielddump
 save
 !NetCDF variables
   !  integer,parameter :: nvar = 8
-  integer,parameter :: nvar = 1    ! reduced set of parameters for SP runs - dump only QL (, QR)
+  integer,parameter :: nvar = 2    ! reduced set of parameters for SP runs - dump only QL (, QR)
   integer :: ncid,nrec = 0
   character(80) :: fname = 'fielddump.xxx.xxx.xxx.nc'
   character(80),dimension(nvar,4) :: ncname
@@ -103,8 +103,8 @@ contains
       ! call ncinfo(ncname( 7,:),'qr','Rain water specific humidity','1e-5kg/kg','tttt')
       ! call ncinfo(ncname( 8,:),'buoy','Buoyancy','K','tttt')
 
-      call ncinfo(ncname( 1,:),'ql','Liquid water specific humidity','1e-5kg/kg','tttt')
-      ! call ncinfo(ncname( 2,:),'qr','Rain water specific humidity','1e-5kg/kg','tttt')
+      call ncinfo(ncname( 1,:),'ql','Liquid water specific humidity','1e-6kg/kg','tttt')
+      call ncinfo(ncname( 2,:),'qr','Rain water specific humidity','1e-6kg/kg','tttt')
       
       call open_nc(fname,  ncid,nrec,n1=imax,n2=jmax,n3=khigh-klow+1)
       if (nrec==0) then
@@ -201,7 +201,7 @@ contains
     !   close (ifoutput)
     ! endif
 
-    field = NINT(1.0E5*ql0,2)
+    field = NINT(1.0E6*ql0,2)
     ! if (lnetcdf) vars(:,:,:,5) = field(2:i1,2:j1,klow:khigh)
     if (lnetcdf) vars(:,:,:,1) = field(2:i1,2:j1,klow:khigh)
     
@@ -229,20 +229,20 @@ contains
     !   close (ifoutput)
     ! end if
 
-!    if(imicro/=imicro_none) then
-!      do i=2-ih,i1+ih
-!      do j=2-jh,j1+jh
-!      do k=1,k1
-!        field(i,j,k) = NINT(1.0E5*svm(i,j,k,iqr),2)
-!      enddo
-!      enddo
-!      enddo
-!    else
-!      field = 0.
-!    endif
+    if(imicro/=imicro_none) then
+      do i=2-ih,i1+ih
+      do j=2-jh,j1+jh
+      do k=1,k1
+        field(i,j,k) = NINT(1.0E6*svm(i,j,k,iqr),2)
+      enddo
+      enddo
+      enddo
+    else
+      field = 0.
+    endif
 
 !    if (lnetcdf) vars(:,:,:,7) = field(2:i1,2:j1,klow:khigh)
-!    if (lnetcdf) vars(:,:,:,2) = field(2:i1,2:j1,klow:khigh)
+    if (lnetcdf) vars(:,:,:,2) = field(2:i1,2:j1,klow:khigh)
 !    if (lbinary) then
 !      if (ldiracc) then
 !        open (ifoutput,file='wbqr.'//cmyidx//'.'//cmyidy//'.'//cexpnr,access='direct', form='unformatted', recl=reclength)
