@@ -955,8 +955,9 @@ contains
       close (ifoutput)
       linkname = name
       linkname(6:11) = "latest"
-      call system("ln -sf "//name //" "//linkname)
-
+      !call system("ln -sf "//name //" "//linkname)
+      call symlnk(linkname, name)
+      
       if (nsv>0) then
         name  = 'inits  h  m        .'
         write (name(6:7)  ,'(i2.2)') ihour
@@ -972,8 +973,8 @@ contains
         close (ifoutput)
         linkname = name
         linkname(6:11) = "latest"
-        call system("ln -sf "//name //" "//linkname)
-
+        !call system("ln -sf "//name //" "//linkname)
+        call symlnk(linkname, name)        
       end if
 
       if (isurf == 1) then
@@ -999,7 +1000,8 @@ contains
         close (ifoutput)
         linkname = name
         linkname(6:11) = "latest"
-        call system("ln -sf "//name //" "//linkname)
+        !call system("ln -sf "//name //" "//linkname)
+        call symlnk(linkname, name)
      end if
      
       if (myid==0) then
