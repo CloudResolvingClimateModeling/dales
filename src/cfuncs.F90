@@ -58,8 +58,11 @@ module cfuncs
    end subroutine my_delete
 
    ! wrapper for unlink, placed in this module for the pre-processor macro handling
+   ! intel unlink is a function, not a subroutine
    subroutine my_unlink(filename)
-     call unlink(filename)
+     character(*) :: filename
+     integer :: status
+     status = unlink(filename)
    end subroutine my_unlink
    
 end module

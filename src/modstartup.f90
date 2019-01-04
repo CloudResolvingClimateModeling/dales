@@ -910,7 +910,7 @@ contains
 
     implicit none
     integer imin,ihour
-    integer i,j,k,n
+    integer i,j,k,n,status
     character(50) name,linkname
 
       ihour = floor(rtimee/3600)
@@ -960,7 +960,7 @@ contains
       linkname = name
       linkname(6:11) = "latest"
       !call system("ln -sf "//name //" "//linkname)
-      call unlink(linkname)
+      status = unlink(linkname)
       call my_symlnk(linkname, name)
       
       if (nsv>0) then
@@ -979,7 +979,7 @@ contains
         linkname = name
         linkname(6:11) = "latest"
         !call system("ln -sf "//name //" "//linkname)
-        call unlink(linkname)
+        status = unlink(linkname)
         call my_symlnk(linkname, name)        
       end if
 
@@ -1007,7 +1007,7 @@ contains
         linkname = name
         linkname(6:11) = "latest"
         !call system("ln -sf "//name //" "//linkname)
-        call unlink(linkname)
+        status = unlink(linkname)
         call my_symlnk(linkname, name)
      end if
      
