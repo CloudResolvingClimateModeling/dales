@@ -29,8 +29,12 @@
 !  Copyright 1993-2009 Delft University of Technology, Wageningen University, Utrecht University, KNMI
 !
 
+
 module modstartup
-use modglobal, only : ifmessages
+  use modglobal, only : ifmessages
+  use cfuncs
+
+
 implicit none
 ! private
 ! public :: startup, writerestartfiles,trestart
@@ -956,7 +960,8 @@ contains
       linkname = name
       linkname(6:11) = "latest"
       !call system("ln -sf "//name //" "//linkname)
-      call symlnk(linkname, name)
+      call unlink(linkname)
+      call my_symlnk(linkname, name)
       
       if (nsv>0) then
         name  = 'inits  h  m        .'
@@ -974,7 +979,8 @@ contains
         linkname = name
         linkname(6:11) = "latest"
         !call system("ln -sf "//name //" "//linkname)
-        call symlnk(linkname, name)        
+        call unlink(linkname)
+        call my_symlnk(linkname, name)        
       end if
 
       if (isurf == 1) then
@@ -1001,7 +1007,8 @@ contains
         linkname = name
         linkname(6:11) = "latest"
         !call system("ln -sf "//name //" "//linkname)
-        call symlnk(linkname, name)
+        call unlink(linkname)
+        call my_symlnk(linkname, name)
      end if
      
       if (myid==0) then
