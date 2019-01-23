@@ -904,6 +904,49 @@ module daleslib
       
     end function gathervol
 
+
+    ! getter function for 3D field data
+    ! g_i, g_j, g_k are index arrays
+    ! data from the specified field is extracted and returned in a
+    ! a(r) = field(g_(r), g_j(r), g_k(r))
+    !
+    ! Assumptions: the indexing arrays are one-based
+    ! the array should be sliced to contain ONLY the physical cells before calling,
+    ! so the data arrays are 1-based
+    function gatherlayer(g_i,g_j,a,n,field) result(ret)
+      use modglobal, only: imax, jmax, i1, j1
+      use mpi
+      use modmpi, only: myidx, myidy, comm3d, my_real, myid
+
+      integer, intent(in)                 :: n
+      integer, dimension(n), intent(in)   :: g_i,g_j
+      real,    dimension(n), intent(out)  :: a
+      real,    intent(in)                 :: field (:,:)
+      integer                             :: r, i, j, is, js, ret
+
+      is = size(field, 1)
+      js = size(field, 2)
+
+      ! store the data that belongs to "my" chunk or 0
+      ! this is reduced with SUM, yielding the full data
+      do r = 1,n
+         i = g_i(r) - myidx * imax
+         j = g_j(r) - myidy * jmax
+         if (i >= 1 .and. i <= is .and. j >= 1 .and. j <= js) then
+            a(r) = field(i,j)
+         else
+            a(r) = 0
+         endif
+      enddo
+
+      !in-place reduction
+      if (myid == 0) then
+         CALL mpi_reduce(MPI_IN_PLACE, a, n, MY_REAL, MPI_SUM, 0, comm3d, ret)
+      else
+         CALL mpi_reduce(           a, a, n, MY_REAL, MPI_SUM, 0, comm3d, ret)
+      endif
+    end function gatherlayer
+
     ! gather the Liquid Water Path
     ! vertical sum of QL * rho * dz = integral dz * rho * q_l
     ! unit: kg / m^2
