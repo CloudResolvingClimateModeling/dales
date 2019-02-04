@@ -905,10 +905,10 @@ module daleslib
     end function gathervol
 
 
-    ! getter function for 3D field data
+    ! getter function for 2D field data
     ! g_i, g_j, g_k are index arrays
     ! data from the specified field is extracted and returned in a
-    ! a(r) = field(g_(r), g_j(r), g_k(r))
+    ! a(r) = field(g_(r), g_j(r))
     !
     ! Assumptions: the indexing arrays are one-based
     ! the array should be sliced to contain ONLY the physical cells before calling,
