@@ -37,6 +37,7 @@ module daleslib
     integer, parameter :: QT_FORCING_GLOBAL=0
     integer, parameter :: QT_FORCING_LOCAL=1
     integer, parameter :: QT_FORCING_VARIANCE=2
+    integer, parameter :: QT_FORCING_STRONG=3
    
     integer :: my_task, master_task
 
@@ -257,7 +258,7 @@ module daleslib
         
         subroutine force_tendencies
           use modmpi,      only : mpierr
-          use modglobal,   only : i1,j1,imax,jmax,kmax
+          use modglobal,   only : i1,j1,imax,jmax,kmax,rdt
           use modfields,   only : up,vp,thlp,qtp,qt0,qt0av,ql0,ql0av,qsat         
 
           implicit none
@@ -265,7 +266,7 @@ module daleslib
           real qt_avg, alpha, qlt, qvt
           real qtp_local (2:i1, 2:j1), qtp_local_lim (2:i1, 2:j1), qtp_lost, al(1:kmax)
 
-          ! write(ifmessages,*) "force_tendencies() : qt_forcing_type =", qt_forcing_type
+          write(ifmessages,*) "force_tendencies() : qt_forcing_type =", qt_forcing_type
           
           if (qt_forcing_type == QT_FORCING_LOCAL) then
              al = 0
@@ -286,10 +287,27 @@ module daleslib
              if (qt_forcing_type == QT_FORCING_GLOBAL) then
                 qtp_local =  qt_tend(k)
              end if
-             
+
              if (qt_forcing_type == QT_FORCING_VARIANCE) then
                 ! force fluctuations of qt, with a forcing profile given by alpha(k)
                 qtp_local = (qt0(2:i1,2:j1,k) - qt0av(k)) * qt_alpha(k) + qt_tend(k)
+             endif
+             
+             if (qt_forcing_type == QT_FORCING_STRONG) then
+                ! adjust qt variability to make ql match ql_ref from OpenIFS.
+                alpha = 0
+                ! not enough clouds on this level.
+                ! OpenIFS can have very small but non-zero QL. We ignore these.
+                 if (ql_ref(k) > ql0av(k) .and. ql_ref(k) > 1e-6) then
+                    alpha = 0.01
+                 end if
+                 
+                 ! we have too much clouds on this level
+                 if (ql_ref(k) < ql0av(k) * .95) then
+                    alpha = -0.01
+                 end if
+                 ! write (ifmessages,*) "strong nudge", k, ql0av(k), ql_ref(k), alpha
+                 qtp_local = (qt0(2:i1,2:j1,k) - qt0av(k)) * alpha + qt_tend(k)
              endif
              
              if (qt_forcing_type == QT_FORCING_LOCAL) then
@@ -302,7 +320,7 @@ module daleslib
              endif                
 
              ! limit the tendency, to avoid qt < 0
-             qtp_local_lim = max (qtp_local, -qt0(2:i1, 2:j1, k)/60.0)
+             qtp_local_lim = max (qtp_local, -qt0(2:i1, 2:j1, k)/(rdt*1.2) )  ! "rdt" here used to be 60. *1.2 for some safety margin.
 
              qtp_lost = sum(qtp_local - qtp_local_lim)
              ! < 0 if the cut-off was activated
