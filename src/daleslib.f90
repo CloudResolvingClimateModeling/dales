@@ -266,8 +266,6 @@ module daleslib
           real qt_avg, alpha, qlt, qvt
           real qtp_local (2:i1, 2:j1), qtp_local_lim (2:i1, 2:j1), qtp_lost, al(1:kmax)
 
-          write(ifmessages,*) "force_tendencies() : qt_forcing_type =", qt_forcing_type
-          
           if (qt_forcing_type == QT_FORCING_LOCAL) then
              al = 0
              if (gathersatfrac(al) /= 0) then
